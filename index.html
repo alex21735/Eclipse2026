@@ -1,45 +1,58 @@
 <!DOCTYPE html>
 <!--
-  Observabilidad del eclipse — 12/08/2026
-  © 2026 Alex · Licencia MIT (código). Datos: Open-Meteo (CC-BY 4.0), DWD/Météo-France/ECMWF,
-  Copernicus CAMS (aerosoles), SRTM/NASA (elevación). Tiempos de contacto: IGN (interpolados).
+  Observabilidad de eclipses — trío ibérico 2026/2027/2028
+  © 2026 · Licencia MIT (código). Datos: Open-Meteo (CC-BY 4.0), DWD/Météo-France/ECMWF,
+  Copernicus CAMS, SRTM/NASA. Elementos besselianos: F. Espenak / NASA Five Millennium Canon.
   Índice orientativo, NO predicción oficial. Consulta AEMET e IGN.
 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Observabilidad del eclipse — 12/08/2026</title>
+<title>Observabilidad de eclipses — trío ibérico 2026·27·28</title>
 <style>
   :root{
-    --bg:#0b1020; --panel:#141b30; --panel2:#1b2540; --ink:#e8ecf6;
-    --dim:#8b97b5; --line:#2a3654; --acc:#f4b942;
+    --bg:#0a0e1a; --panel:#131a2e; --panel2:#1b2440; --ink:#e9edf7; --dim:#8b97b5;
+    --line:#293654; --acc:#f4b942; --acc2:#5aa9e0;
     --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono",Consolas,monospace;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
     font-family:"Inter",system-ui,-apple-system,sans-serif;line-height:1.5;font-variant-numeric:tabular-nums;}
-  .wrap{max-width:1320px;margin:0 auto;padding:24px 18px 80px}
-  h1{font-size:1.35rem;font-weight:650;letter-spacing:-.01em;margin:0 0 2px}
-  .sub{color:var(--dim);font-size:.9rem;margin-bottom:22px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
-  label{display:block;font-size:.78rem;color:var(--dim);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+  .wrap{max-width:1340px;margin:0 auto;padding:22px 16px 80px}
+  h1{font-size:1.4rem;font-weight:680;letter-spacing:-.015em;margin:0 0 2px}
+  .sub{color:var(--dim);font-size:.9rem;margin-bottom:20px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+  label{display:block;font-size:.72rem;color:var(--dim);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
   input,select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
-    border-radius:7px;padding:8px 10px;font-size:.92rem;width:100%;font-family:var(--mono)}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:12px}
-  button{background:var(--acc);color:#1a1200;border:none;border-radius:8px;
-    padding:11px 20px;font-size:.95rem;font-weight:650;cursor:pointer;margin-top:12px}
+    border-radius:8px;padding:9px 11px;font-size:.92rem;width:100%;font-family:var(--mono)}
+  input:focus,select:focus{outline:none;border-color:var(--acc2)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+  .searchrow{display:flex;gap:8px;margin-bottom:14px}
+  .searchrow input{flex:1}
+  button{background:var(--acc);color:#1a1200;border:none;border-radius:9px;
+    padding:11px 20px;font-size:.95rem;font-weight:680;cursor:pointer}
+  button.sec{background:var(--panel2);color:var(--ink);border:1px solid var(--line);font-weight:600}
   button:disabled{opacity:.5;cursor:wait}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
   .status{font-size:.85rem;color:var(--dim);margin-top:10px;min-height:1.2em;font-family:var(--mono)}
+  .geo-results{margin-top:8px;display:flex;flex-direction:column;gap:4px}
+  .geo-item{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:8px 11px;
+    cursor:pointer;font-size:.86rem;display:flex;justify-content:space-between}
+  .geo-item:hover{border-color:var(--acc2)}
+  .geo-item .co{color:var(--dim);font-family:var(--mono);font-size:.78rem}
+  .meta{display:flex;gap:16px;flex-wrap:wrap;font-size:.82rem;color:var(--dim);margin:2px 0 12px;
+    font-family:var(--mono);padding:9px 12px;background:var(--panel2);border-radius:8px;border-left:3px solid var(--acc2)}
+  .meta b{color:var(--ink);font-weight:600}
   table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:.77rem;margin-top:6px}
   th,td{padding:7px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
-  th{color:var(--dim);font-weight:500;font-size:.67rem;text-transform:uppercase;letter-spacing:.02em}
+  th{color:var(--dim);font-weight:500;font-size:.66rem;text-transform:uppercase;letter-spacing:.02em}
   td:first-child,th:first-child{text-align:left}
   .num{font-weight:700}
   .sep{border-left:2px solid #33436b}
   .lgd{display:flex;gap:14px;flex-wrap:wrap;font-size:.78rem;color:var(--dim);margin-top:14px;align-items:center}
   .chip{display:inline-flex;align-items:center;gap:6px}
-  .colhead{color:var(--acc);font-size:.9rem;font-weight:600;margin:2px 0 4px}
+  .colhead{color:var(--acc);font-size:.92rem;font-weight:650;margin:2px 0 4px}
   details{margin-top:12px}summary{cursor:pointer;color:var(--dim);font-size:.85rem}
   .note{font-size:.82rem;color:var(--dim);margin-top:8px}
   .expl{font-size:.8rem;color:var(--dim);background:var(--panel2);border-left:3px solid var(--acc);
@@ -50,26 +63,43 @@
   .grp{font-size:.62rem;color:var(--acc);text-transform:uppercase;letter-spacing:.05em;text-align:center;padding-bottom:2px}
   .warn{color:var(--acc)}
   .below td{background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(224,82,82,.14) 3px,rgba(224,82,82,.14) 6px)}
-  .totrow td{background:rgba(244,185,66,.10)}
+  .totrow td{background:rgba(244,185,66,.11)}
   .exp-btn{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
-    border-radius:7px;padding:8px 16px;font-size:.85rem;font-weight:600;cursor:pointer;margin:14px 8px 0 0}
+    border-radius:7px;padding:8px 15px;font-size:.85rem;font-weight:600;cursor:pointer;margin:14px 8px 0 0}
   .exp-btn:hover{border-color:var(--acc)}
-  #exparea{width:100%;min-height:180px;background:#070b16;border:1px solid var(--line);
-    color:#b8c4e0;border-radius:8px;padding:12px;font-family:var(--mono);font-size:.74rem;
+  #exparea{width:100%;min-height:170px;background:#060a14;border:1px solid var(--line);
+    color:#b8c4e0;border-radius:8px;padding:12px;font-family:var(--mono);font-size:.73rem;
     margin-top:12px;display:none;white-space:pre;overflow:auto}
+  .ecl-pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.72rem;font-weight:600;
+    background:var(--panel2);border:1px solid var(--line);color:var(--acc)}
+  .hint{font-size:.72rem;color:#5a6787;margin-top:3px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Observabilidad del eclipse</h1>
-  <div class="sub">Geometría solar · obscuración lunar · horizonte topográfico · nubosidad en línea de visión (7 rayos) · extinción · puntuación integrada</div>
+  <h1>Observabilidad de eclipses</h1>
+  <div class="sub">Trío ibérico 2026·27·28 · circunstancias locales por elementos besselianos · nubosidad en línea de visión · extinción · puntuación integrada</div>
 
   <div class="card">
-    <div class="grid">
-      <div><label>Lat observador</label><input id="lat" value="40.194354"></div>
-      <div><label>Lon observador</label><input id="lon" value="0.207287"></div>
-      <div><label>Alt. obs. (m)</label><input id="alt" value="1"></div>
-      <div><label>Fecha</label><input id="fecha" value="2026-08-12"></div>
+    <div class="searchrow">
+      <input id="place" placeholder="Buscar localidad (p.ej. Cabanes, Castellón)…" onkeydown="if(event.key==='Enter')geocode()">
+      <button class="sec" onclick="geocode()">Buscar</button>
+      <button class="sec" onclick="useMyLocation()">📍 Mi ubicación</button>
+    </div>
+    <div class="geo-results" id="georesults"></div>
+
+    <div class="grid" style="margin-top:6px">
+      <div><label>Eclipse</label>
+        <select id="eclipse" onchange="onEclipseChange()">
+          <option value="2026">12 ago 2026 · total</option>
+          <option value="2027">2 ago 2027 · total</option>
+          <option value="2028">26 ene 2028 · anular</option>
+        </select>
+      </div>
+      <div><label>Lat</label><input id="lat" value="40.194354"></div>
+      <div><label>Lon</label><input id="lon" value="0.207287"></div>
+      <div><label>Altitud (m)</label><input id="alt" placeholder="auto" value="">
+        <div class="hint">vacío = automática por posición</div></div>
       <div><label>Desde (local)</label><input id="h0" value="19:00"></div>
       <div><label>Hasta (local)</label><input id="h1" value="21:00"></div>
       <div><label>Intervalo</label>
@@ -78,14 +108,17 @@
       <div><label>Modelo nubes</label>
         <select id="modelo">
           <option value="best_match">best_match</option>
-          <option value="icon_eu">ICON-EU (cubre España)</option>
-          <option value="meteofrance_arome_france_hd">AROME HD (solo NE penín.)</option>
+          <option value="icon_eu">ICON-EU (España)</option>
+          <option value="meteofrance_arome_france_hd">AROME HD (NE penín.)</option>
           <option value="gfs_seamless">GFS</option>
           <option value="ecmwf_ifs025">ECMWF IFS</option>
         </select>
       </div>
     </div>
-    <button id="run" onclick="run()">Calcular observabilidad</button>
+    <div class="btnrow">
+      <button id="run" onclick="run()">Calcular observabilidad</button>
+      <span class="ecl-pill" id="eclinfo"></span>
+    </div>
     <div class="status" id="status"></div>
   </div>
 
@@ -99,19 +132,74 @@ const SAMPLES=[
   {name:'M5',layer:'mid',h:5},{name:'M3',layer:'mid',h:3},
   {name:'B15',layer:'low',h:1.5},{name:'B08',layer:'low',h:0.8},
 ];
-// --- Tiempos de contacto ANCLADOS a datos IGN (Torreblanca-Cabanes, interpolado de Burriana/Castellón) ---
-// segundos desde medianoche CEST
-const C1=19*3600+37*60, C2=20*3600+30*60+30, C3=20*3600+32*60+40, C4=21*3600+24*60;
-function areaFrac(m){ // m: fracción de diámetro cubierto 0..1 -> % área
-  if(m<=0)return 0; if(m>=1)return 100;
-  const d=2*(1-m); if(d>=2)return 0; if(d<=0)return 100;
+
+// ===== ELEMENTOS BESSELIANOS (F. Espenak / NASA Five Millennium Canon) =====
+// a = a0 + a1*t + a2*t^2 + a3*t^3 ; t = t1 - t0 (horas decimales TDT)
+const ECL={
+  '2026':{
+    label:'12 ago 2026 · total', type:'T', date:'2026-08-12', t0:18.0, dT:71.4,
+    tzoff:2, // CEST = UT+2
+    x:[0.475593,0.5189288,-0.0000773,-0.0000088],
+    y:[0.771161,-0.2301664,-0.0001245,0.0000037],
+    d:[14.79667,-0.012065,-0.000003,0.0],
+    l1:[0.537954,0.0000940,-0.0000121,0.0],
+    l2:[-0.008142,0.0000935,-0.0000121,0.0],
+    mu:[88.74776,15.003093,0.0,0.0],
+    tanf1:0.0046141, tanf2:0.0045911, win:[18,22]
+  },
+  '2027':{
+    label:'2 ago 2027 · total', type:'T', date:'2027-08-02', t0:10.0, dT:76.0,
+    tzoff:2,
+    x:[-0.019645,0.5447105,-0.0000444,-0.0000091],
+    y:[0.160063,-0.2111569,-0.0001217,0.0000037],
+    d:[17.76247,-0.010181,-0.000004,0.0],
+    l1:[0.530596,0.0000138,-0.0000128,0.0],
+    l2:[-0.015464,0.0000137,-0.0000128,0.0],
+    mu:[328.42249,15.002093,0.0,0.0],
+    tanf1:0.0046064, tanf2:0.0045834, win:[8,13]
+  },
+  '2028':null // anular 26 ene 2028: elementos pendientes de verificar
+};
+
+function poly(c,t){return c[0]+c[1]*t+c[2]*t*t+c[3]*t*t*t;}
+function besselCirc(E,t){return {x:poly(E.x,t),y:poly(E.y,t),d:poly(E.d,t),l1:poly(E.l1,t),l2:poly(E.l2,t),mu:poly(E.mu,t)};}
+// magnitud (fracción de diámetro) para lat/lon(este+)/alt(m) a hora local decimal
+function eclipseMag(E,localHour,lat,lonE,hM){
+  const ut=localHour-E.tzoff, tdt=ut+E.dT/3600, t=tdt-E.t0;
+  const b=besselCirc(E,t), dr=b.d*D2R;
+  const u=Math.atan(0.99664719*Math.tan(lat*D2R));
+  const rs=0.99664719*Math.sin(u)+(hM/6378140)*Math.sin(lat*D2R);
+  const rc=Math.cos(u)+(hM/6378140)*Math.cos(lat*D2R);
+  const H=(b.mu+lonE)*D2R;
+  const xi=rc*Math.sin(H);
+  const eta=rs*Math.cos(dr)-rc*Math.cos(H)*Math.sin(dr);
+  const zeta=rs*Math.sin(dr)+rc*Math.cos(H)*Math.cos(dr);
+  const uu=b.x-xi, vv=b.y-eta, m=Math.hypot(uu,vv);
+  const L1z=b.l1-zeta*E.tanf1, L2z=b.l2-zeta*E.tanf2;
+  if(m>L1z)return {mag:0,m,L1z};
+  return {mag:(L1z-m)/(L1z+L2z), m, L1z};
+}
+function obscFromMag(mag,type){
+  if(mag<=0)return 0;
+  if(type==='T'&&mag>=1)return 100;
+  const mm=Math.min(mag,1);
+  const d=2*(1-mm);
+  if(d>=2)return 0; if(d<=0)return 100;
   return (2*Math.acos(d/2)-(d/2)*Math.sqrt(Math.max(0,4-d*d)))/Math.PI*100;
 }
-function obscur(tsec){
-  if(tsec<C1||tsec>C4)return 0;
-  if(tsec>=C2&&tsec<=C3)return 100;
-  if(tsec<C2)return areaFrac((tsec-C1)/(C2-C1));
-  return areaFrac((C4-tsec)/(C4-C3));
+// escanear contactos y pico para info del pill
+function eclipseSummary(E,lat,lonE,hM){
+  if(!E)return null;
+  let best={mag:-1,h:0}, c1=null,c4=null,tot0=null,tot1=null;
+  for(let hh=E.win[0];hh<=E.win[1];hh+=1/60){
+    const r=eclipseMag(E,hh,lat,lonE,hM);
+    if(r.mag>0&&c1==null)c1=hh;
+    if(r.mag>0)c4=hh;
+    if(E.type==='T'&&r.mag>=1){if(tot0==null)tot0=hh;tot1=hh;}
+    if(r.mag>best.mag)best={mag:r.mag,h:hh};
+  }
+  const f=hh=>{const m=Math.round((hh%1)*60);let H=Math.floor(hh);let M=m;if(M===60){H++;M=0;}return `${String(H).padStart(2,'0')}:${String(M).padStart(2,'0')}`;};
+  return {c1,c4,tot0,tot1,peak:best,fmt:f};
 }
 
 function solarPos(date,lat,lon){
@@ -144,19 +232,25 @@ function dest(lat,lon,d,az){
   const lo2=lo+Math.atan2(Math.sin(a)*Math.sin(dr)*Math.cos(la),Math.cos(dr)-Math.sin(la)*Math.sin(la2));
   return {lat:la2*R2D,lon:lo2*R2D};
 }
-// escala de color para el NÚMERO (texto): good->bad
 function scale(v,good,bad){
   if(v==null||isNaN(v))return '#5a6787';
   let t=(v-good)/(bad-good); t=Math.max(0,Math.min(1,t));
   let r,g,b;
   if(t<0.5){const u=t/0.5;r=Math.round(95+150*u);g=Math.round(200-20*u);b=Math.round(140-50*u);}
-  else{const u=(t-0.5)/0.5;r=Math.round(245);g=Math.round(180-70*u);b=Math.round(90-10*u);}
+  else{const u=(t-0.5)/0.5;r=245;g=Math.round(180-70*u);b=Math.round(90-10*u);}
   return `rgb(${r},${g},${b})`;
 }
 async function jget(u){const r=await fetch(u);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
 const fPt=(lat,lon,model,fecha)=>jget(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=cloudcover_low,cloudcover_mid,cloudcover_high&timezone=UTC&start_date=${fecha}&end_date=${fecha}&models=${model}`);
 const fVis=(lat,lon,fecha)=>jget(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=visibility&timezone=UTC&start_date=${fecha}&end_date=${fecha}&models=best_match`);
 const fAir=(lat,lon,fecha)=>jget(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=aerosol_optical_depth,dust&timezone=UTC&start_date=${fecha}&end_date=${fecha}`);
+async function fElev(lat,lon){try{const d=await jget(`https://api.open-meteo.com/v1/elevation?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}`);return d.elevation&&d.elevation[0]!=null?d.elevation[0]:null;}catch(e){return null;}}
+async function nearestTown(lat,lon){
+  // Open-Meteo geocoding no hace reverse; usamos búsqueda inversa por proximidad no disponible.
+  // Alternativa: BigDataCloud reverse (sin clave, CORS abierto).
+  try{const d=await jget(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=es`);
+    return d.locality||d.city||d.principalSubdivision||null;}catch(e){return null;}
+}
 async function horizonAngle(lat,lon,az,obsElev){
   const dists=[0.5,1,2,3,5,8,12,18,25,35,50];
   const pts=dists.map(d=>dest(lat,lon,d,az));
@@ -174,32 +268,96 @@ function interp(arr,times,fecha,utcFrac){
   const v1=(i1>=0&&arr[i1]!=null?arr[i1]:v0);return v0+(v1-v0)*f;
 }
 
+// ===== Geocoding =====
+async function geocode(){
+  const q=document.getElementById('place').value.trim();
+  const box=document.getElementById('georesults');
+  if(!q){box.innerHTML='';return;}
+  box.innerHTML='<div class="note">Buscando…</div>';
+  try{
+    const d=await jget(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=es&format=json`);
+    if(!d.results||!d.results.length){box.innerHTML='<div class="note">Sin resultados.</div>';return;}
+    box.innerHTML='';
+    for(const r of d.results){
+      const el=document.createElement('div');el.className='geo-item';
+      const adm=[r.admin1,r.country].filter(Boolean).join(', ');
+      el.innerHTML=`<span>${r.name}<span class="co"> · ${adm}</span></span><span class="co">${r.latitude.toFixed(3)}, ${r.longitude.toFixed(3)}${r.elevation!=null?' · '+Math.round(r.elevation)+'m':''}</span>`;
+      el.onclick=()=>{
+        document.getElementById('lat').value=r.latitude.toFixed(6);
+        document.getElementById('lon').value=r.longitude.toFixed(6);
+        document.getElementById('alt').value=r.elevation!=null?Math.round(r.elevation):'';
+        box.innerHTML='';document.getElementById('place').value=r.name;
+        onEclipseChange();
+      };
+      box.appendChild(el);
+    }
+  }catch(e){box.innerHTML='<div class="note">Error de búsqueda: '+e.message+'</div>';}
+}
+function useMyLocation(){
+  if(!navigator.geolocation){document.getElementById('status').textContent='Geolocalización no disponible.';return;}
+  document.getElementById('status').textContent='Obteniendo ubicación…';
+  navigator.geolocation.getCurrentPosition(p=>{
+    document.getElementById('lat').value=p.coords.latitude.toFixed(6);
+    document.getElementById('lon').value=p.coords.longitude.toFixed(6);
+    document.getElementById('alt').value='';
+    document.getElementById('status').textContent='Ubicación fijada.';
+    onEclipseChange();
+  },e=>{document.getElementById('status').textContent='No se pudo obtener ubicación: '+e.message;},{enableHighAccuracy:true});
+}
+
+// actualizar pill de eclipse y ventana horaria por defecto
+function onEclipseChange(){
+  const key=document.getElementById('eclipse').value, E=ECL[key];
+  const pill=document.getElementById('eclinfo');
+  if(!E){pill.textContent='Elementos de 2028 pendientes'; return;}
+  const lat=+document.getElementById('lat').value, lon=+document.getElementById('lon').value;
+  const alt=document.getElementById('alt').value===''?0:+document.getElementById('alt').value;
+  const s=eclipseSummary(E,lat,lon,alt);
+  if(!s||s.peak.mag<=0){pill.textContent='Sin eclipse visible aquí';return;}
+  let txt=`máx ${(s.peak.mag*100).toFixed(0)}% a las ${s.fmt(s.peak.h)}`;
+  if(s.tot0)txt+=` · totalidad ${s.fmt(s.tot0)}–${s.fmt(s.tot1)}`;
+  pill.textContent=txt;
+}
+
 async function run(){
   const btn=document.getElementById('run'),st=document.getElementById('status');
-  const lat=+document.getElementById('lat').value,lon=+document.getElementById('lon').value,alt=+document.getElementById('alt').value;
-  const fecha=document.getElementById('fecha').value,model=document.getElementById('modelo').value;
+  const key=document.getElementById('eclipse').value, E=ECL[key];
+  const lat=+document.getElementById('lat').value,lon=+document.getElementById('lon').value;
+  const fecha=E?E.date:document.getElementById('eclipse').value;
+  const model=document.getElementById('modelo').value;
   const t0=parseHM(document.getElementById('h0').value),t1=parseHM(document.getElementById('h1').value);
-  const paso=+document.getElementById('paso').value/60; // en horas
+  const paso=+document.getElementById('paso').value/60;
   btn.disabled=true;document.getElementById('out').innerHTML='';
   try{
-    const cache=new Map(),key=(a,b)=>`${a.toFixed(2)}_${b.toFixed(2)}`;
+    if(!E){st.textContent='Los elementos besselianos del eclipse de 2028 aún no están cargados.';btn.disabled=false;return;}
+    // altitud: si vacío -> auto por posición
+    let alt; const altRaw=document.getElementById('alt').value.trim();
+    let altAuto=false;
+    if(altRaw===''){st.textContent='Obteniendo altitud del terreno…';alt=await fElev(lat,lon);if(alt==null)alt=0;altAuto=true;document.getElementById('alt').value=Math.round(alt);}
+    else alt=+altRaw;
+
+    st.textContent='Localidad y datos meteo…';
+    const [town,visD,airD]=await Promise.all([nearestTown(lat,lon),fVis(lat,lon,fecha),fAir(lat,lon,fecha)]);
+    // timestamp de emisión / de los datos: Open-Meteo forecast lleva generationtime; usamos la hora actual de consulta y la fecha del modelo
+    const dataFetchedAt=new Date().toISOString().slice(0,16).replace('T',' ');
+
+    const cache=new Map(),key2=(a,b)=>`${a.toFixed(2)}_${b.toFixed(2)}`;
     async function cover(la,lo,layer,utcFrac){
-      const k=key(la,lo);
+      const k=key2(la,lo);
       if(!cache.has(k)){st.textContent=`Nubes: punto ${cache.size+1}…`;cache.set(k,await fPt(la,lo,model,fecha));}
       const d=cache.get(k);return interp(d.hourly['cloudcover_'+layer],d.hourly.time,fecha,utcFrac);
     }
-    st.textContent='Visibilidad y aerosoles…';
-    const [visD,airD]=await Promise.all([fVis(lat,lon,fecha),fAir(lat,lon,fecha)]);
     const horCache=new Map();
-    async function horiz(az){const k=az.toFixed(1);if(!horCache.has(k)){st.textContent=`Horizonte az=${az.toFixed(0)}°…`;horCache.set(k,await horizonAngle(lat,lon,az,alt));}return horCache.get(k);}
+    async function horiz(az){const k=az.toFixed(1);if(!horCache.has(k)){horCache.set(k,await horizonAngle(lat,lon,az,alt));}return horCache.get(k);}
 
     const rows=[];
     for(let t=t0;t<=t1+1e-9;t+=paso){
-      const hh=Math.floor(t+1e-9),mm=Math.round((t-hh)*60),utcFrac=t-2;
-      const tsec=hh*3600+mm*60;
-      const dt=new Date(Date.UTC(2026,7,+fecha.slice(8,10),hh-2,mm,0));
+      const hh=Math.floor(t+1e-9),mm=Math.round((t-hh)*60),utcFrac=t-E.tzoff;
+      const dt=new Date(Date.UTC(+fecha.slice(0,4),+fecha.slice(5,7)-1,+fecha.slice(8,10),hh-E.tzoff,mm,0));
       const sp=solarPos(dt,lat,lon);
-      const ob=obscur(tsec);
+      const magR=eclipseMag(E,t,lat,lon,alt);
+      const ob=obscFromMag(magR.mag,E.type);
+      const totality=(E.type==='T'&&magR.mag>=1);
       const cells={};let trans=1,valid=false;
       for(const S of SAMPLES){
         if(sp.elev<=0.3){cells[S.name]={st:'h'};continue;}
@@ -215,31 +373,30 @@ async function run(){
       const vis=interp(visD.hourly.visibility,visD.hourly.time,fecha,utcFrac);
       const aod=interp(airD.hourly.aerosol_optical_depth,airD.hourly.time,fecha,utcFrac);
       const dust=interp(airD.hourly.dust,airD.hourly.time,fecha,utcFrac);
-      // score de VISIBILIDAD del disco (no confundir con obscuración): qué tan bien se ve el Sol
       const Tcloud=valid?trans:1;
       const tauSlant=(aod!=null&&am!=null)?aod*am:0;
-      // extinción por aerosol, con suelo para no aplastar el detalle a AM alta
       const Taero=Math.max(0.35,Math.exp(-tauSlant));
-      // Rayleigh: peso reducido (0.04) y acotado a >=0.30 -> la masa de aire modula pero no domina
       const Tray=am!=null?Math.max(0.30,Math.exp(-0.04*am)):1;
       let fTopo=1; if(hz!=null){const mg=sp.elev-hz;fTopo=mg>0.3?1:(mg<-0.1?0:(mg+0.1)/0.4);}
       const score=Math.round(100*Tcloud*Taero*Tray*fTopo);
       const below=(hz!=null&&sp.elev<hz);
-      const totality=(tsec>=C2&&tsec<=C3);
-      rows.push({hh,mm,sp,ob,hz,cells,opac,am,vis,aod,dust,score,below,totality});
+      rows.push({hh,mm,sp,ob,mag:magR.mag,hz,cells,opac,am,vis,aod,dust,score,below,totality});
     }
 
     // ---- render ----
-    let html=`<div class="card"><div class="colhead">Observabilidad del eclipse · modelo nubes ${model}</div>`;
+    let html=`<div class="card"><div class="colhead">${E.label} · ${model}</div>`;
+    html+=`<div class="meta"><span><b>Lugar:</b> ${town||'—'} (${lat.toFixed(4)}, ${lon.toFixed(4)})</span>`
+      +`<span><b>Altitud:</b> ${Math.round(alt)} m${altAuto?' (auto)':''}</span>`
+      +`<span><b>Datos meteo:</b> ${fecha} · consultado ${dataFetchedAt} UTC</span>`
+      +`<span><b>Fuente nubes:</b> Open-Meteo/${model}</span></div>`;
+
     html+=`<div class="tbl-scroll"><table><thead>`;
     html+=`<tr><th></th><th colspan="3" class="grp">GEOMETRÍA SOLAR</th><th class="grp sep">LUNA</th>`
       +`<th colspan="7" class="grp sep">NUBOSIDAD EN LÍNEA DE VISIÓN</th><th class="grp sep">·</th>`
       +`<th colspan="4" class="grp sep">EXTINCIÓN</th><th class="grp sep">·</th></tr>`;
     html+=`<tr><th>Hora</th><th>Az°</th><th>Elev°</th><th>Topo°</th><th class="sep">Obsc%</th>`;
     for(const S of SAMPLES) html+=`<th class="${S.name==='A12'?'sep':''}">${S.name}<br><span class="band">${S.h}km</span></th>`;
-    html+=`<th class="sep">Opac</th>`;
-    html+=`<th class="sep">AM</th><th>Vis<br><span class="band">km</span></th><th>AOD</th><th>Polvo</th>`;
-    html+=`<th class="sep">Score</th></tr></thead><tbody>`;
+    html+=`<th class="sep">Opac</th><th class="sep">AM</th><th>Vis<br><span class="band">km</span></th><th>AOD</th><th>Polvo</th><th class="sep">Score</th></tr></thead><tbody>`;
 
     const cloudCell=(x,sep)=>{const c=sep?' class="sep"':'';
       if(!x)return`<td${c}>—</td>`;
@@ -259,7 +416,7 @@ async function run(){
         +`<td>${r.sp.az.toFixed(1)}</td>`
         +`<td${r.sp.elev<4?' class="warn"':''}>${r.sp.elev.toFixed(2)}</td>`
         +nCell(r.hz,5,-1,false,1,r.hz==null?null:(r.hz.toFixed(1)+(r.below?'⚠':'')))
-        +nCell(r.ob,0,100,true,0)  // obsc: 0=bueno(verde) para "ver el sol"? -> ver nota
+        +nCell(r.ob,0,100,true,0)
         +tds
         +nCell(r.opac,0,100,true,0)
         +nCell(r.am,2,12,true,1)
@@ -270,47 +427,43 @@ async function run(){
         +`</tr>`;
     }
     html+=`</tbody></table></div>`;
-
     html+=`<div class="lgd">
       <span class="chip"><span style="color:#4fb87a;font-weight:700">■</span> favorable</span>
       <span class="chip"><span style="color:#e0a352;font-weight:700">■</span> intermedio</span>
       <span class="chip"><span style="color:#f5744a;font-weight:700">■</span> desfavorable</span>
       <span class="chip">· fila ámbar = totalidad · fila rayada = Sol tras el relieve · Elev&lt;4° en ámbar</span></div>`;
 
-    html+=`<div class="expl"><b>Obsc% (obscuración lunar):</b> fracción del disco solar cubierta por la Luna. Anclada a los contactos del IGN
-      para tu punto: C1≈19:37, totalidad 20:30:30–20:32:40 (100%), C4≈21:24. La <b>forma</b> entre contactos es analítica (fracción de área
-      de dos discos); los <b>instantes</b> son los oficiales. Color: verde=disco despejado, rojo=Sol tapado por la Luna (que es justo lo que se busca ver).</div>`;
-
+    html+=`<div class="expl"><b>Obsc% (obscuración lunar):</b> fracción del disco solar cubierta por la Luna, calculada por
+      <b>elementos besselianos</b> (Espenak/NASA) para tus coordenadas y altitud exactas. Válido para cualquier punto; los tiempos de contacto
+      y la totalidad se derivan del propio cálculo, no de valores fijos.</div>`;
     html+=`<div class="expl"><b>Score de visibilidad del disco (0–100):</b>
-      <code>Score = 100 · T_nube · T_aero · T_Rayleigh · f_topo</code>. Mide si el Sol es <i>visible</i> a través de la atmósfera y sin obstáculos
-      — <b>independiente de la obscuración lunar</b>. Un score alto durante la totalidad = verás bien el eclipse; score bajo = nube/relieve/calima lo impiden.
-      <code>T_nube=∏(1−cᵢ)</code>, <code>T_aero=max(0.35, e^(−AOD·AM))</code>, <code>T_Rayleigh=max(0.30, e^(−0.04·AM))</code>, <code>f_topo</code>=0 si el Sol está tras la montaña.
-      Los términos de masa de aire llevan peso reducido y un suelo, para que modulen sin aplastar el detalle fino de nubes cuando el Sol está muy bajo (AM alta).</div>`;
+      <code>Score = 100 · T_nube · T_aero · T_Rayleigh · f_topo</code>. Mide si el Sol es <i>visible</i> (atmósfera + obstáculos), independiente de la obscuración.
+      <code>T_nube=∏(1−cᵢ)</code>, <code>T_aero=max(0.35, e^(−AOD·AM))</code>, <code>T_Rayleigh=max(0.30, e^(−0.04·AM))</code>, <code>f_topo</code>=0 tras la montaña.</div>`;
 
-    // export buttons
     html+=`<div style="margin-top:4px">
       <button class="exp-btn" onclick="exportData()">⭳ Extraer datos (texto)</button>
-      <button class="exp-btn" onclick="copyData()">⧉ Copiar al portapapeles</button>
-      <button class="exp-btn" onclick="exportCSV()">⭳ Descargar CSV</button>
+      <button class="exp-btn" onclick="copyData()">⧉ Copiar</button>
+      <button class="exp-btn" onclick="exportCSV()">⭳ CSV</button>
       <textarea id="exparea" readonly></textarea></div>`;
 
     html+=`<details><summary>Método y fiabilidad</summary><div class="note">
-      <b>Geometría:</b> posición solar NOAA exacta en cada instante. <b>Obsc%:</b> anclada a tiempos de contacto IGN (Burriana/Castellón, interpolados a tu punto); precisión de instantes ±1 min, forma de la curva ±unos %. <b>Topo°:</b> ángulo máx del terreno (SRTM ~90 m) a 0.5–50 km en el azimut solar; sin vegetación ni edificios.<br>
-      <b>Nubes LOS:</b> 7 rayos, <code>d=hₖ/tan(elev)</code>, capa correspondiente en cada punto. Horaria interpolada al paso elegido (nativo 15-min solo Centroeuropa). Error de altura ×(1/tan elev)≈×14 a 4°.<br>
-      <b>AM</b> Kasten–Young · <b>Vis</b> superficie · <b>AOD/Polvo</b> CAMS (columna del observador).<br>
-      <b>Score</b>: pesos heurísticos (0.10 Rayleigh, umbral topo 0.3°); índice relativo, no probabilidad. ICON-D2 no cubre España. AROME solo NE peninsular.
+      <b>Obscuración:</b> elementos besselianos del Five Millennium Canon (F. Espenak), evaluados con posición topocéntrica del observador (lat/lon/altitud). Validado contra tiempos oficiales IGN para 2026. 2028 (anular) pendiente de cargar.<br>
+      <b>Geometría solar:</b> algoritmo NOAA. <b>Topo°:</b> ángulo máx del terreno (SRTM ~90 m) a 0.5–50 km en el azimut solar; sin vegetación/edificios.<br>
+      <b>Nubes LOS:</b> 7 rayos, <code>d=hₖ/tan(elev)</code>. Datos horarios interpolados al paso elegido. Error de altura ×(1/tan elev)≈×14 a 4°.<br>
+      <b>AM</b> Kasten–Young · <b>Vis</b> superficie · <b>AOD/Polvo</b> CAMS · <b>Altitud</b> auto vía SRTM si se deja vacía.<br>
+      <b>Score:</b> pesos heurísticos; índice relativo, no probabilidad. ICON-D2 no cubre España; AROME solo NE peninsular.
     </div></details></div>`;
 
     document.getElementById('out').innerHTML=html;
-    window.__rows=rows; window.__meta={lat,lon,alt,fecha,model,paso:paso*60};
-    st.textContent=`Listo · ${cache.size} puntos de nube · ${horCache.size} azimuts · ${rows.length} instantes.`;
+    window.__rows=rows; window.__meta={lat,lon,alt,fecha,model,paso:paso*60,town,eclipse:E.label};
+    st.textContent=`Listo · ${cache.size} puntos de nube · ${rows.length} instantes.`;
   }catch(e){st.textContent='Error: '+e.message;}finally{btn.disabled=false;}
 }
 
 function buildText(){
   const rows=window.__rows,m=window.__meta; if(!rows)return'';
   const f=(v,d=0,w=0)=>(v==null||isNaN(v)?'s/d':(typeof v==='number'?v.toFixed(d):v)).toString().padStart(w);
-  let s=`# Observabilidad eclipse ${m.fecha} · obs ${m.lat},${m.lon} (${m.alt}m) · modelo ${m.model} · paso ${m.paso}min\n`;
+  let s=`# ${m.eclipse} · ${m.town||''} ${m.lat},${m.lon} (${Math.round(m.alt)}m) · modelo ${m.model} · paso ${m.paso}min\n`;
   s+=`# hora az elev topo obsc% | A12 A10 A8 M5 M3 B15 B08 (%/km) | opac AM vis AOD polvo | score\n`;
   for(const r of rows){
     const hm=`${String(r.hh).padStart(2,'0')}:${String(r.mm).padStart(2,'0')}`;
@@ -337,8 +490,11 @@ function exportCSV(){
       r.aod==null?'':r.aod.toFixed(2),r.dust==null?'':Math.round(r.dust),r.score,r.totality?1:0,r.below?1:0].join(',')+'\n';
   }
   const blob=new Blob([csv],{type:'text/csv'}),url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download=`eclipse_observabilidad_${m.fecha}.csv`;a.click();URL.revokeObjectURL(url);
+  a.href=url;a.download=`eclipse_${m.fecha}.csv`;a.click();URL.revokeObjectURL(url);
 }
+
+// init
+onEclipseChange();
 </script>
 </body>
 </html>
