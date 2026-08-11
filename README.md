@@ -50,8 +50,6 @@ Este proyecto usa datos de terceros. Si lo reutilizas, mantén la atribución:
 
 - **No es una predicción oficial.** Es un índice orientativo. Para decisiones,
   consulta **[AEMET](https://www.aemet.es/)** e **[IGN](https://eclipses.ign.es/)**.
-- Los **tiempos de contacto** están interpolados desde Burriana/Castellón capital,
-  no son el dato oficial exacto para Cabanes-Torreblanca (±~1 min).
 - La **obscuración** usa una forma analítica anclada a esos tiempos; precisión de
   unos pocos %.
 - Los datos de **nubosidad** son horarios (interpolados a intervalos menores; el
