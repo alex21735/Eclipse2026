@@ -29,7 +29,22 @@
   input:focus,select:focus{outline:none;border-color:var(--acc2)}
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
   .searchrow{display:flex;gap:8px;margin-bottom:14px}
-  .searchrow input{flex:1}
+  .searchrow input{flex:1;min-width:0}
+  .searchbtns{display:flex;gap:8px;flex-shrink:0}
+  @media (max-width:600px){
+    .searchrow{flex-direction:column}
+    .searchbtns{width:100%}
+    .searchbtns button{flex:1}
+  }
+  .plotbox{width:100%}
+  .plotbox svg{width:100%;height:auto;display:block}
+  .plotbox.plotfull, .plotbox.plotfull-css{
+    position:fixed;inset:0;z-index:9999;background:#0a0e1a;
+    display:flex;align-items:center;justify-content:center;padding:12px}
+  .plotbox.plotfull svg, .plotbox.plotfull-css svg{
+    width:auto;height:auto;max-width:100%;max-height:100%}
+  .plotbox.plotfull-css::after{content:"Toca ⛶ de nuevo para salir";position:fixed;bottom:10px;left:0;right:0;
+    text-align:center;color:#8b97b5;font-size:12px}
   button{background:var(--acc);color:#1a1200;border:none;border-radius:9px;
     padding:11px 20px;font-size:.95rem;font-weight:680;cursor:pointer}
   button.sec{background:var(--panel2);color:var(--ink);border:1px solid var(--line);font-weight:600}
@@ -85,22 +100,24 @@
 <body>
 <div class="wrap">
   <h1>Observabilidad de eclipses</h1>
-  <div class="sub">Trío ibérico 2026·27·28 · circunstancias locales por elementos besselianos · nubosidad en línea de visión · extinción · puntuación integrada</div>
+  <div class="sub">Eclipses ibéricos 2026 · 2027 · 2028 — ¿podrás verlo desde tu ubicación?</div>
 
   <div class="card">
     <div class="searchrow">
       <input id="place" placeholder="Buscar localidad (p.ej. Cabanes, Castellón)…" onkeydown="if(event.key==='Enter')geocode()">
-      <button class="sec" onclick="geocode()">Buscar</button>
-      <button class="sec" onclick="useMyLocation()">📍 Mi ubicación</button>
+      <div class="searchbtns">
+        <button class="sec" onclick="geocode()">Buscar</button>
+        <button class="sec" onclick="useMyLocation()">📍 Mi ubicación</button>
+      </div>
     </div>
     <div class="geo-results" id="georesults"></div>
 
     <div class="grid" style="margin-top:6px">
       <div><label>Eclipse</label>
         <select id="eclipse" onchange="onEclipseChange()">
-          <option value="2026">12 ago 2026 · total</option>
-          <option value="2027">2 ago 2027 · total</option>
-          <option value="2028">26 ene 2028 · anular</option>
+          <option value="2026">12 ago 2026</option>
+          <option value="2027">2 ago 2027</option>
+          <option value="2028">26 ene 2028</option>
         </select>
       </div>
       <div><label>Lat</label><input id="lat" value="40.194354"></div>
@@ -318,9 +335,11 @@ function buildHorizonPlot(rows,profile,azMin,azMax){
     }
   }
   s+=`</svg>`;
-  return `<div class="card" style="margin-top:16px"><div class="colhead">Horizonte: trayectoria solar vs relieve</div>`
-    +`<div class="note">Cada círculo = un instante en el recorrido del Sol. <b>Relleno</b> = score de nubes (verde bueno→rojo malo); <b>número</b> = % de ocultación lunar; <b>etiqueta</b> = hora. En la <b>totalidad</b>, círculo con solo contorno dorado. Línea/área marrón = perfil del horizonte topográfico: donde el Sol cae por debajo, está oculto tras las montañas. Pasa el ratón por un círculo para todos los datos.</div>`
-    +s+`</div>`;
+  return `<div class="card" style="margin-top:16px"><div class="colhead" style="display:flex;justify-content:space-between;align-items:center">`
+    +`<span>Horizonte: trayectoria solar vs relieve</span>`
+    +`<button class="exp-btn" style="margin:0" onclick="togglePlotFull(this)">⛶ Pantalla completa</button></div>`
+    +`<div class="note">Cada círculo = un instante del recorrido del Sol. <b>Relleno</b> = score (verde bueno→rojo malo); <b>número</b> = % de ocultación; <b>etiqueta</b> = hora. En la <b>totalidad</b>, solo contorno dorado. Área marrón = horizonte del relieve: donde el Sol cae por debajo, está oculto por montañas. Toca/pasa el ratón por un círculo para ver todos los datos.</div>`
+    +`<div class="plotbox" id="plotbox">${s}</div></div>`;
 }
 function eclipseSummary(E,lat,lonE,hM){
   if(!E)return null;
@@ -404,14 +423,25 @@ function scoreColor(score){
   }
   return '#5a6787';
 }
-// jget lanza en error; jsafe captura y registra el fallo en WARN sin romper el flujo
+// jget lanza en error; jsafe captura. Solo errores "raros" (red, CORS, 5xx) van a WARN (UI);
+// los de datos ausentes (400/404, "no data", fuera de malla) se registran solo en consola.
 const WARN=[];
-async function jget(u){const r=await fetch(u);if(!r.ok){let reason='';try{const j=await r.json();reason=j.reason||'';}catch(e){}throw new Error('HTTP '+r.status+(reason?' — '+reason:''));}return r.json();}
-async function jsafe(nombre,fn){try{return await fn();}catch(e){WARN.push(`${nombre}: ${e.message}`);return null;}}
+async function jget(u){const r=await fetch(u);if(!r.ok){let reason='';try{const j=await r.json();reason=j.reason||'';}catch(e){}const err=new Error('HTTP '+r.status+(reason?' — '+reason:''));err.status=r.status;err.reason=reason;throw err;}return r.json();}
+function esRaro(e){
+  // raro = merece aviso en UI: fallo de red/CORS (sin status) o error de servidor 5xx
+  if(e.status==null) return true;               // TypeError de fetch (red/CORS)
+  if(e.status>=500) return true;
+  // 400/404 con motivo de datos ausentes -> no es raro, no molestamos al usuario
+  const r=(e.reason||e.message||'').toLowerCase();
+  if(/no data|out of|not available|no.*disponible|range|bounds/.test(r)) return false;
+  // otros 4xx sí los mostramos (parámetro mal, etc.)
+  return e.status!==400 && e.status!==404;
+}
+async function jsafe(nombre,fn){try{return await fn();}catch(e){ if(esRaro(e)) WARN.push(`${nombre}: ${e.message}`); else console.warn(`[datos] ${nombre}: ${e.message}`); return null;}}
 const fPt=(lat,lon,model,fecha)=>jget(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=cloudcover_low,cloudcover_mid,cloudcover_high&timezone=UTC&start_date=${fecha}&end_date=${fecha}&models=${model}`);
 const fVis=(lat,lon,fecha)=>jget(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=visibility&timezone=UTC&start_date=${fecha}&end_date=${fecha}&models=best_match`);
 const fAir=(lat,lon,fecha)=>jget(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=aerosol_optical_depth,dust&timezone=UTC&start_date=${fecha}&end_date=${fecha}`);
-async function fElev(lat,lon){try{const d=await jget(`https://api.open-meteo.com/v1/elevation?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}`);return d.elevation&&d.elevation[0]!=null?d.elevation[0]:null;}catch(e){WARN.push('elevación: '+e.message);return null;}}
+async function fElev(lat,lon){try{const d=await jget(`https://api.open-meteo.com/v1/elevation?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}`);return d.elevation&&d.elevation[0]!=null?d.elevation[0]:null;}catch(e){console.warn('[datos] elevación: '+e.message);return null;}}
 // última actualización del modelo (endpoint de estado); devuelve la más reciente disponible
 async function modelUpdated(){
   try{
@@ -420,11 +450,11 @@ async function modelUpdated(){
     let mx=0;
     const walk=o=>{if(o&&typeof o==='object'){for(const k in o){if(k==='last_run_modification_time'&&typeof o[k]==='number')mx=Math.max(mx,o[k]);else walk(o[k]);}}};
     walk(d); return mx>0?new Date(mx*1000):null;
-  }catch(e){WARN.push('estado modelo: '+e.message);return null;}
+  }catch(e){console.warn('[datos] estado modelo: '+e.message);return null;}
 }
 async function nearestTown(lat,lon){
   try{const d=await jget(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=es`);
-    return d.locality||d.city||d.principalSubdivision||null;}catch(e){WARN.push('localidad: '+e.message);return null;}
+    return d.locality||d.city||d.principalSubdivision||null;}catch(e){console.warn('[datos] localidad: '+e.message);return null;}
 }
 async function horizonAngle(lat,lon,az,obsElev){
   const dists=[0.5,1,2,3,5,8,12,18,25,35,50];
@@ -458,6 +488,10 @@ async function horizonProfile(lat,lon,azMin,azMax,obsElev,stepDeg=2){
   return prof;
 }
 const parseHM=s=>{const[a,b]=s.split(':').map(Number);return a+(b||0)/60;};
+function azToCompass(az){
+  const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
+  return dirs[Math.round(((az%360)/22.5))%16];
+}
 const idxAt=(times,fecha,utc)=>times.indexOf(`${fecha}T${String(((utc%24)+24)%24).padStart(2,'0')}:00`);
 function interp(arr,times,fecha,utcFrac){
   const h0=Math.floor(utcFrac),h1=Math.ceil(utcFrac),f=utcFrac-h0;
@@ -621,12 +655,22 @@ async function run(){
     }
 
     html+=`<div class="tbl-scroll"><table><thead>`;
-    html+=`<tr><th></th><th colspan="3" class="grp">GEOMETRÍA SOLAR</th><th colspan="2" class="grp sep">LUNA</th>`
-      +`<th colspan="7" class="grp sep">NUBOSIDAD EN LÍNEA DE VISIÓN</th><th class="grp sep">·</th>`
-      +`<th colspan="4" class="grp sep">EXTINCIÓN</th><th class="grp sep">·</th></tr>`;
-    html+=`<tr><th class="stickyc">Hora</th><th>Az°</th><th>Elev°</th><th>Topo°</th><th class="sep">Obsc%</th><th>Vista</th>`;
-    for(const S of SAMPLES) html+=`<th class="${S.name==='A12'?'sep':''}">${S.name}<br><span class="band">${S.h}km</span></th>`;
-    html+=`<th class="sep">Opac</th><th class="sep">AM</th><th>Vis<br><span class="band">km</span></th><th>AOD</th><th>Polvo</th><th class="sep">Score</th></tr></thead><tbody>`;
+    html+=`<tr><th></th><th colspan="3" class="grp">SOL</th><th colspan="2" class="grp sep">LUNA</th>`
+      +`<th colspan="7" class="grp sep">NUBES EN LÍNEA DE VISIÓN</th><th class="grp sep">·</th>`
+      +`<th colspan="4" class="grp sep">ATMÓSFERA</th><th class="grp sep">·</th></tr>`;
+    html+=`<tr><th class="stickyc" title="Hora local (CEST). La fila con ★ es el instante de máxima ocultación.">Hora</th>`
+      +`<th title="Azimut del Sol: dirección en el horizonte (0°=N, 90°=E, 180°=S, 270°=O).">Az°</th>`
+      +`<th title="Elevación del Sol sobre el horizonte, en grados. Por debajo de ~4° la observación es difícil.">Elev°</th>`
+      +`<th title="Ángulo del horizonte topográfico (relieve) en la dirección del Sol. Si supera la elevación solar, el Sol está oculto tras montañas.">Topo°</th>`
+      +`<th class="sep" title="Porcentaje del disco solar cubierto por la Luna en ese instante.">Obsc%</th>`
+      +`<th title="Dibujo del solapamiento Sol–Luna con el ángulo real. En la totalidad, solo contorno.">Vista</th>`;
+    for(const S of SAMPLES) html+=`<th class="${S.name==='A12'?'sep':''}" title="Nubosidad (%) a ${S.h} km de altura, en el punto del cielo por el que pasa la luz del Sol hacia ti (no sobre tu cabeza).">${S.name}<br><span class="band">${S.h}km</span></th>`;
+    html+=`<th class="sep" title="Opacidad de la columna de nubes combinada: probabilidad de que las nubes tapen el Sol (0=despejado, 100=cubierto).">Opac</th>`
+      +`<th class="sep" title="Masa de aire: cuánto atmósfera atraviesa la luz. 1=cenit; crece mucho cerca del horizonte.">AM</th>`
+      +`<th title="Visibilidad horizontal estimada, en km.">Vis<br><span class="band">km</span></th>`
+      +`<th title="Profundidad óptica de aerosoles (bruma/partículas). Mayor = atmósfera más turbia.">AOD</th>`
+      +`<th title="Concentración de polvo en suspensión (calima).">Polvo</th>`
+      +`<th class="sep" title="Puntuación 0–100 de visibilidad del disco solar combinando nubes, aerosoles y relieve. No mide la ocultación, sino si el Sol se verá.">Score</th></tr></thead><tbody>`;
 
     const cloudCell=(x,sep)=>{const c=sep?' class="sep"':'';
       if(!x)return`<td${c}>—</td>`;
@@ -678,12 +722,23 @@ async function run(){
     }
     html+=plotHtml;
 
-    html+=`<div class="expl"><b>Obsc% (obscuración lunar):</b> fracción del disco solar cubierta por la Luna, calculada por
-      <b>elementos besselianos</b> (Espenak/NASA) para tus coordenadas y altitud exactas. La columna <b>Vista</b> dibuja los dos discos
-      (Sol amarillo, Luna oscura) con su solapamiento y ángulo reales; en la totalidad aparece el halo de la corona. Válido para cualquier punto.</div>`;
-    html+=`<div class="expl"><b>Score de visibilidad del disco (0–100):</b>
-      <code>Score = 100 · T_nube · T_aero · T_Rayleigh · f_topo</code>. Mide si el Sol es <i>visible</i> (atmósfera + obstáculos), independiente de la obscuración.
-      <code>T_nube=∏(1−cᵢ)</code>, <code>T_aero=max(0.35, e^(−AOD·AM))</code>, <code>T_Rayleigh=max(0.30, e^(−0.04·AM))</code>, <code>f_topo</code>=0 tras la montaña.</div>`;
+    // datos interesantes de la observación (dinámicos)
+    const rMax=rows.find(r=>r.isMax)||rows.reduce((a,b)=>b.ob>(a?a.ob:-1)?b:a,null);
+    const hayTot=rows.some(r=>r.totality);
+    const elevMax=rMax?rMax.sp.elev:null, azMax=rMax?rMax.sp.az:null;
+    let facts=[];
+    if(rMax){
+      facts.push(`El máximo de ocultación (${Math.round(rMax.ob)}%) ocurre a las <b>${String(rMax.hh).padStart(2,'0')}:${String(rMax.mm).padStart(2,'0')}${rMax.isMax?':'+String(rMax.ss).padStart(2,'0'):''}</b>, con el Sol a <b>${elevMax.toFixed(1)}°</b> de altura en azimut ${azMax.toFixed(0)}° (${azToCompass(azMax)}).`);
+    }
+    if(hayTot) facts.push(`Desde aquí el eclipse es <b>total</b>: la Luna cubre por completo el Sol. Podrás ver la corona solar y bajará la luz como al anochecer.`);
+    else if(rMax) facts.push(`Desde aquí el eclipse es <b>parcial</b> (máx ${Math.round(rMax.ob)}%). Necesitarás filtro solar todo el tiempo; no habrá totalidad.`);
+    if(elevMax!=null && elevMax<6) facts.push(`El Sol estará <b>muy bajo</b> sobre el horizonte: busca un punto con vista despejada hacia el ${azToCompass(azMax)}, sin montañas ni edificios.`);
+    facts.push(`Nunca mires al Sol sin filtro solar homologado, salvo durante los segundos de totalidad completa.`);
+    html+=`<div class="expl"><b>Sobre esta observación:</b><br>· ${facts.join('<br>· ')}</div>`;
+
+    // cómo se calcula (breve, visible)
+    html+=`<div class="expl"><b>Ocultación (%):</b> cuánto del Sol tapa la Luna, calculado con la geometría real Sol–Luna–observador para tus coordenadas.
+      <br><b>Score (0–100):</b> si el Sol <i>se verá</i>, combinando nubes en la línea de visión, turbidez del aire y si hay montañas delante. Es un índice orientativo, no una probabilidad.</div>`;
 
     html+=`<div style="margin-top:4px">
       <button class="exp-btn" onclick="exportData()">⭳ Extraer datos (texto)</button>
@@ -691,12 +746,14 @@ async function run(){
       <button class="exp-btn" onclick="exportCSV()">⭳ CSV</button>
       <textarea id="exparea" readonly></textarea></div>`;
 
-    html+=`<details><summary>Método y fiabilidad</summary><div class="note">
-      <b>Obscuración:</b> elementos besselianos del Five Millennium Canon (F. Espenak), evaluados con posición topocéntrica del observador (lat/lon/altitud). Validado contra tiempos oficiales IGN para 2026. 2028 (anular) pendiente de cargar.<br>
-      <b>Geometría solar:</b> algoritmo NOAA. <b>Topo°:</b> ángulo máx del terreno (SRTM ~90 m) a 0.5–50 km en el azimut solar; sin vegetación/edificios.<br>
-      <b>Nubes LOS:</b> 7 rayos, <code>d=hₖ/tan(elev)</code>. Datos horarios interpolados al paso elegido. Error de altura ×(1/tan elev)≈×14 a 4°.<br>
-      <b>AM</b> Kasten–Young · <b>Vis</b> superficie · <b>AOD/Polvo</b> CAMS · <b>Altitud</b> auto vía SRTM si se deja vacía.<br>
-      <b>Score:</b> pesos heurísticos; índice relativo, no probabilidad. ICON-D2 no cubre España; AROME solo NE peninsular.
+    html+=`<details><summary>Ver más — método y detalles técnicos</summary><div class="note">
+      <b>Ocultación / tiempos:</b> elementos besselianos del Five Millennium Canon (F. Espenak, NASA), evaluados con posición topocéntrica del observador (lat/lon/altitud). Validado contra tiempos oficiales del IGN para 2026 y 2027. La columna <b>Vista</b> dibuja ambos discos con su ángulo real. 2028 (anular) pendiente de cargar.<br>
+      <b>Score:</b> <code>Score = 100 · T_nube · T_aero · T_Rayleigh · f_topo</code>, donde <code>T_nube=∏(1−cᵢ)</code> (transmisión por capas de nube en la línea de visión), <code>T_aero=max(0.35, e^(−AOD·AM))</code> (aerosoles), <code>T_Rayleigh=max(0.30, e^(−0.04·AM))</code> (dispersión molecular) y <code>f_topo</code>=0 si el Sol queda tras el relieve. Pesos heurísticos; índice relativo.<br>
+      <b>Geometría solar:</b> algoritmo NOAA. <b>Topo°:</b> ángulo máximo del terreno (SRTM ~90 m) muestreado a 0.5–50 km en el azimut del Sol; no incluye vegetación ni edificios.<br>
+      <b>Nubes en línea de visión:</b> 7 rayos a distintas alturas, distancia <code>d=hₖ/tan(elev)</code>. Datos horarios interpolados al paso elegido. A elevaciones bajas el error de altura se amplifica ×(1/tan elev) (≈×14 a 4°).<br>
+      <b>Masa de aire</b> Kasten–Young · <b>Visibilidad</b> en superficie · <b>AOD/Polvo</b> de Copernicus CAMS · <b>Altitud</b> automática vía SRTM si se deja vacía.<br>
+      <b>Cobertura de modelos:</b> ICON-D2 no cubre España; AROME solo el NE peninsular; para el resto usa best_match, ICON-EU, GFS o ECMWF.<br>
+      <b>Fuentes:</b> Open-Meteo (CC-BY 4.0), DWD/Météo-France/ECMWF, Copernicus CAMS, SRTM/NASA. Índice orientativo, no predicción oficial: consulta AEMET e IGN.
     </div></details></div>`;
 
     document.getElementById('out').innerHTML=html;
@@ -737,6 +794,26 @@ function exportCSV(){
   const blob=new Blob([csv],{type:'text/csv'}),url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download=`eclipse_${m.fecha}.csv`;a.click();URL.revokeObjectURL(url);
 }
+
+function togglePlotFull(btn){
+  const box=document.getElementById('plotbox');
+  if(!box)return;
+  const fsEl=document.fullscreenElement||document.webkitFullscreenElement;
+  if(!fsEl){
+    const req=box.requestFullscreen||box.webkitRequestFullscreen;
+    if(req){ box.classList.add('plotfull'); req.call(box).catch(()=>{ // fallback: modo CSS a pantalla
+      box.classList.add('plotfull-css'); }); }
+    else { box.classList.toggle('plotfull-css'); } // navegadores sin Fullscreen API
+  }else{
+    const ex=document.exitFullscreen||document.webkitExitFullscreen;
+    if(ex) ex.call(document);
+    box.classList.remove('plotfull','plotfull-css');
+  }
+}
+document.addEventListener('fullscreenchange',()=>{
+  const box=document.getElementById('plotbox');
+  if(box && !document.fullscreenElement){box.classList.remove('plotfull');}
+});
 
 // init
 onEclipseChange();
