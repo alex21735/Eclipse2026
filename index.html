@@ -64,6 +64,13 @@
   .warn{color:var(--acc)}
   .below td{background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(224,82,82,.14) 3px,rgba(224,82,82,.14) 6px)}
   .totrow td{background:rgba(244,185,66,.11)}
+  .maxrow td{background:rgba(244,185,66,.22);font-weight:600}
+  .maxrow .stickyc{color:var(--acc)}
+  .stickyc{position:sticky;left:0;z-index:2;background:var(--panel)}
+  tbody .stickyc{background:#131a2e}
+  .totrow .stickyc{background:#241f14}
+  .maxrow .stickyc{background:#2c2610}
+  .below .stickyc{background:#1a1420}
   .exp-btn{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
     border-radius:7px;padding:8px 15px;font-size:.85rem;font-weight:600;cursor:pointer;margin:14px 8px 0 0}
   .exp-btn:hover{border-color:var(--acc)}
@@ -145,7 +152,7 @@ const ECL={
     l1:[0.537954,0.0000940,-0.0000121,0.0],
     l2:[-0.008142,0.0000935,-0.0000121,0.0],
     mu:[88.74776,15.003093,0.0,0.0],
-    tanf1:0.0046141, tanf2:0.0045911, win:[18,22]
+    tanf1:0.0046141, tanf2:0.0045911, win:[18,22], defWin:['19:00','21:00']
   },
   '2027':{
     label:'2 ago 2027 · total', type:'T', date:'2027-08-02', t0:10.0, dT:76.0,
@@ -156,7 +163,7 @@ const ECL={
     l1:[0.530596,0.0000138,-0.0000128,0.0],
     l2:[-0.015464,0.0000137,-0.0000128,0.0],
     mu:[328.42249,15.002093,0.0,0.0],
-    tanf1:0.0046064, tanf2:0.0045834, win:[8,13]
+    tanf1:0.0046064, tanf2:0.0045834, win:[8,13], defWin:['09:30','11:30']
   },
   '2028':null // anular 26 ene 2028: elementos pendientes de verificar
 };
@@ -176,8 +183,14 @@ function eclipseMag(E,localHour,lat,lonE,hM){
   const zeta=rs*Math.sin(dr)+rc*Math.cos(H)*Math.cos(dr);
   const uu=b.x-xi, vv=b.y-eta, m=Math.hypot(uu,vv);
   const L1z=b.l1-zeta*E.tanf1, L2z=b.l2-zeta*E.tanf2;
-  if(m>L1z)return {mag:0,m,L1z};
-  return {mag:(L1z-m)/(L1z+L2z), m, L1z};
+  // radios angulares relativos: el disco solar se toma como radio 1; la Luna en proporción
+  // ratio de radios luna/sol ≈ (L1z - L2z)/(L1z + L2z) mapeado; usamos k=0.2725 estándar
+  const mag=(m>L1z)?0:(L1z-m)/(L1z+L2z);
+  // ángulo de posición del centro lunar respecto al solar (para orientar el dibujo)
+  const posAng=Math.atan2(uu,vv)*R2D; // 0=arriba(N), horario
+  // separación normalizada al radio solar: sep=1 -> centros a un radio; para el dibujo
+  const sepNorm=(L1z+L2z)>0? m/((L1z+L2z)/2) : 99;
+  return {mag, m, L1z, posAng, sepNorm};
 }
 function obscFromMag(mag,type){
   if(mag<=0)return 0;
@@ -187,7 +200,128 @@ function obscFromMag(mag,type){
   if(d>=2)return 0; if(d<=0)return 100;
   return (2*Math.acos(d/2)-(d/2)*Math.sqrt(Math.max(0,4-d*d)))/Math.PI*100;
 }
-// escanear contactos y pico para info del pill
+// mini-SVG de dos discos: Sol (fijo) + Luna desplazada según magnitud y ángulo de posición
+function occultSVG(mag,posAng,type,size=30){
+  const r=size*0.32, cx=size/2, cy=size/2;
+  if(mag<=0){ // sin cubrir: solo Sol
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`
+      +`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#ffcf5c"/></svg>`;
+  }
+  const total=(type==='T'&&mag>=1);
+  // separación de centros: mag=0 -> 2r (tangentes exteriores); mag=1 -> 0 (concéntrico)
+  const sep=2*r*(1-Math.min(mag,1));
+  const a=posAng*D2R;
+  const mx=cx+sep*Math.sin(a), my=cy-sep*Math.cos(a);
+  const id='clp'+Math.random().toString(36).slice(2,7);
+  let s=`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`;
+  if(total){
+    // corona/brillito
+    s+=`<circle cx="${cx}" cy="${cy}" r="${r*1.35}" fill="none" stroke="#ffe08a" stroke-width="1.4" opacity="0.9"/>`;
+    s+=`<circle cx="${cx}" cy="${cy}" r="${r*1.15}" fill="none" stroke="#fff3c4" stroke-width="0.8" opacity="0.7"/>`;
+  }
+  s+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#ffcf5c"/>`;
+  // Luna: disco oscuro encima
+  s+=`<circle cx="${mx.toFixed(2)}" cy="${my.toFixed(2)}" r="${r}" fill="#0a0e1a" stroke="#2a3654" stroke-width="0.5"/>`;
+  s+=`</svg>`;
+  return s;
+}
+// Plot azimut×elevación: línea de relieve (rellena) + trayectoria solar con puntos y hover
+function buildHorizonPlot(rows,profile,azMin,azMax){
+  const W=920,H=420,mL=48,mR=20,mT=18,mB=44;
+  const pw=W-mL-mR, ph=H-mT-mB;
+  const nPts=rows.filter(r=>isFinite(r.sp.az)&&isFinite(r.sp.elev)).length;
+  // rango Y: de -2 a max(elev del sol, relieve)+3
+  const elevs=rows.map(r=>r.sp.elev).filter(isFinite);
+  const hzs=profile.map(p=>p.horiz).filter(v=>v!=null);
+  const yMax=Math.max(10,Math.ceil(Math.max(...elevs,...hzs,0))+3);
+  const yMin=Math.min(-2,Math.floor(Math.min(...elevs,...(hzs.length?hzs:[0]))));
+  const X=az=>mL+(az-azMin)/(azMax-azMin)*pw;
+  const Y=el=>mT+(yMax-el)/(yMax-yMin)*ph;
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;background:#0a0e1a;border:1px solid #293654;border-radius:10px">`;
+  // grid + ejes
+  for(let e=Math.ceil(yMin/5)*5;e<=yMax;e+=5){
+    s+=`<line x1="${mL}" y1="${Y(e).toFixed(1)}" x2="${W-mR}" y2="${Y(e).toFixed(1)}" stroke="#1b2440" stroke-width="1"/>`;
+    s+=`<text x="${mL-6}" y="${(Y(e)+3).toFixed(1)}" fill="#5a6787" font-size="10" text-anchor="end" font-family="monospace">${e}°</text>`;
+  }
+  const azStep=(azMax-azMin)>60?20:10;
+  for(let a=Math.ceil(azMin/azStep)*azStep;a<=azMax;a+=azStep){
+    s+=`<line x1="${X(a).toFixed(1)}" y1="${mT}" x2="${X(a).toFixed(1)}" y2="${H-mB}" stroke="#1b2440" stroke-width="1"/>`;
+    s+=`<text x="${X(a).toFixed(1)}" y="${H-mB+14}" fill="#5a6787" font-size="10" text-anchor="middle" font-family="monospace">${a}°</text>`;
+  }
+  // línea horizonte 0°
+  s+=`<line x1="${mL}" y1="${Y(0).toFixed(1)}" x2="${W-mR}" y2="${Y(0).toFixed(1)}" stroke="#33436b" stroke-width="1" stroke-dasharray="3,3"/>`;
+  // etiquetas ejes
+  s+=`<text x="${mL+pw/2}" y="${H-6}" fill="#8b97b5" font-size="11" text-anchor="middle">Azimut</text>`;
+  s+=`<text x="14" y="${mT+ph/2}" fill="#8b97b5" font-size="11" text-anchor="middle" transform="rotate(-90 14 ${mT+ph/2})">Elevación</text>`;
+  // relieve: área rellena
+  const pv=profile.filter(p=>p.horiz!=null);
+  if(pv.length){
+    let d=`M ${X(pv[0].az).toFixed(1)} ${Y(pv[0].horiz).toFixed(1)}`;
+    for(const p of pv.slice(1)) d+=` L ${X(p.az).toFixed(1)} ${Y(p.horiz).toFixed(1)}`;
+    const area=d+` L ${X(pv[pv.length-1].az).toFixed(1)} ${Y(yMin).toFixed(1)} L ${X(pv[0].az).toFixed(1)} ${Y(yMin).toFixed(1)} Z`;
+    s+=`<path d="${area}" fill="#5a463288" stroke="none"/>`;
+    s+=`<path d="${d}" fill="none" stroke="#c9a36a" stroke-width="1.8"/>`;
+  }
+  // trayectoria solar: línea
+  const rr=rows.filter(r=>isFinite(r.sp.az)&&isFinite(r.sp.elev));
+  if(rr.length){
+    let d=`M ${X(rr[0].sp.az).toFixed(1)} ${Y(rr[0].sp.elev).toFixed(1)}`;
+    for(const r of rr.slice(1)) d+=` L ${X(r.sp.az).toFixed(1)} ${Y(r.sp.elev).toFixed(1)}`;
+    s+=`<path d="${d}" fill="none" stroke="#5aa9e0" stroke-width="1.4" opacity="0.55"/>`;
+    // detectar mañana o tarde: comparar elevación al inicio vs final
+    const rising = rr.length>1 && rr[rr.length-1].sp.elev > rr[0].sp.elev; // mañana si sube
+    // puntos del Sol — se dibujan de fuera hacia el máximo evitando solapes
+    const rad=r=>r.isMax?12:(r.totality?11:10);
+    const minGap=22; // px mínimos entre centros dibujados (≈ diámetro para que no se toquen)
+    // posiciones de puntos protegidos (máximo/totalidad): despejan espacio a ambos lados
+    const protPts=rr.filter(r=>r.isMax||r.totality).map(r=>({x:+X(r.sp.az),y:+Y(r.sp.elev)}));
+    let lastCx=null,lastCy=null;
+    for(const r of rr){
+      const cx=+X(r.sp.az).toFixed(1), cy=+Y(r.sp.elev).toFixed(1);
+      if(!r.isMax && !r.totality){
+        // saltar si se solapa con el anterior dibujado
+        if(lastCx!=null && Math.hypot(cx-lastCx,cy-lastCy)<minGap) continue;
+        // saltar si se solapa con un punto protegido (máx/totalidad) a cualquier lado
+        let clashProt=false;
+        for(const p of protPts){ if(Math.hypot(cx-p.x,cy-p.y)<minGap){clashProt=true;break;} }
+        if(clashProt) continue;
+      }
+      lastCx=cx;lastCy=cy;
+      const col=scoreColor(r.score);
+      const hm=`${String(r.hh).padStart(2,'0')}:${String(r.mm).padStart(2,'0')}${r.isMax?':'+String(r.ss).padStart(2,'0'):''}`;
+      const opacTxt = r.opac==null?'s/d':Math.round(r.opac)+'%';
+      const visTxt = r.vis==null?'s/d':(r.vis/1000).toFixed(0)+' km';
+      const aodTxt = r.aod==null?'s/d':r.aod.toFixed(2);
+      const amTxt = r.am==null?'s/d':r.am.toFixed(1);
+      const topoTxt = r.hz==null?'s/d':r.hz.toFixed(1)+'°';
+      const estado = r.below?'Sol TRAS EL RELIEVE':(r.totality?'TOTALIDAD':(r.sp.elev<4?'muy bajo':'visible'));
+      const tip=`${hm}${r.isMax?'  ★ máximo':''}\n`
+        +`Azimut ${r.sp.az.toFixed(1)}°  ·  Elevación ${r.sp.elev.toFixed(1)}°\n`
+        +`Ocultación lunar: ${Math.round(r.ob)}%\n`
+        +`Score visibilidad: ${r.score}/100\n`
+        +`Nubes (opac. columna): ${opacTxt}\n`
+        +`Masa de aire: ${amTxt}  ·  Visibilidad: ${visTxt}  ·  AOD: ${aodTxt}\n`
+        +`Horizonte relieve: ${topoTxt}\n`
+        +`Estado: ${estado}`;
+      const R=rad(r);
+      if(r.totality){
+        s+=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="#141a2e" stroke="#f4b942" stroke-width="2.2"><title>${tip}</title></circle>`;
+        s+=`<text x="${cx}" y="${cy+3.5}" fill="#f4b942" font-size="9" font-weight="700" text-anchor="middle" font-family="monospace" pointer-events="none">${Math.round(r.ob)}</text>`;
+      }else{
+        s+=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="${col}" stroke="#0a0e1a" stroke-width="1"><title>${tip}</title></circle>`;
+        s+=`<text x="${cx}" y="${cy+3.5}" fill="#0a0e1a" font-size="9" font-weight="700" text-anchor="middle" font-family="monospace" pointer-events="none">${Math.round(r.ob)}</text>`;
+      }
+      // etiqueta de hora: mañana (sube) -> arriba-izquierda ; tarde (baja) -> arriba-derecha
+      const lx = rising ? cx-R-3 : cx+R+3;
+      const anchor = rising ? 'end' : 'start';
+      s+=`<text x="${lx}" y="${cy-R-2}" fill="${col}" font-size="9.5" font-weight="600" text-anchor="${anchor}" font-family="monospace" pointer-events="none">${hm}</text>`;
+    }
+  }
+  s+=`</svg>`;
+  return `<div class="card" style="margin-top:16px"><div class="colhead">Horizonte: trayectoria solar vs relieve</div>`
+    +`<div class="note">Cada círculo = un instante en el recorrido del Sol. <b>Relleno</b> = score de nubes (verde bueno→rojo malo); <b>número</b> = % de ocultación lunar; <b>etiqueta</b> = hora. En la <b>totalidad</b>, círculo con solo contorno dorado. Línea/área marrón = perfil del horizonte topográfico: donde el Sol cae por debajo, está oculto tras las montañas. Pasa el ratón por un círculo para todos los datos.</div>`
+    +s+`</div>`;
+}
 function eclipseSummary(E,lat,lonE,hM){
   if(!E)return null;
   let best={mag:-1,h:0}, c1=null,c4=null,tot0=null,tot1=null;
@@ -235,21 +369,62 @@ function dest(lat,lon,d,az){
 function scale(v,good,bad){
   if(v==null||isNaN(v))return '#5a6787';
   let t=(v-good)/(bad-good); t=Math.max(0,Math.min(1,t));
+  return scaleT(t);
+}
+// devuelve color desde t∈[0,1] (0=bueno verde, 1=malo rojo)
+function scaleT(t){
+  t=Math.max(0,Math.min(1,t));
   let r,g,b;
   if(t<0.5){const u=t/0.5;r=Math.round(95+150*u);g=Math.round(200-20*u);b=Math.round(140-50*u);}
   else{const u=(t-0.5)/0.5;r=245;g=Math.round(180-70*u);b=Math.round(90-10*u);}
   return `rgb(${r},${g},${b})`;
 }
-async function jget(u){const r=await fetch(u);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
+// color de SCORE: interpolación lineal de color entre anclas nombradas.
+// 0 rojo · 5 naranja · 12 ámbar · 20 amarillo · 100 verde
+function scoreColor(score){
+  if(score==null||isNaN(score))return '#5a6787';
+  const A=[
+    [0,   [224,60,60]],   // rojo
+    [5,   [240,130,50]],  // naranja
+    [12,  [245,180,70]],  // ámbar
+    [20,  [230,215,80]],  // amarillo
+    [100, [80,190,110]],  // verde
+  ];
+  if(score<=A[0][0])return `rgb(${A[0][1].join(',')})`;
+  if(score>=A[A.length-1][0])return `rgb(${A[A.length-1][1].join(',')})`;
+  for(let i=0;i<A.length-1;i++){
+    if(score>=A[i][0]&&score<=A[i+1][0]){
+      const f=(score-A[i][0])/(A[i+1][0]-A[i][0]);
+      const c0=A[i][1],c1=A[i+1][1];
+      const r=Math.round(c0[0]+f*(c1[0]-c0[0]));
+      const g=Math.round(c0[1]+f*(c1[1]-c0[1]));
+      const b=Math.round(c0[2]+f*(c1[2]-c0[2]));
+      return `rgb(${r},${g},${b})`;
+    }
+  }
+  return '#5a6787';
+}
+// jget lanza en error; jsafe captura y registra el fallo en WARN sin romper el flujo
+const WARN=[];
+async function jget(u){const r=await fetch(u);if(!r.ok){let reason='';try{const j=await r.json();reason=j.reason||'';}catch(e){}throw new Error('HTTP '+r.status+(reason?' — '+reason:''));}return r.json();}
+async function jsafe(nombre,fn){try{return await fn();}catch(e){WARN.push(`${nombre}: ${e.message}`);return null;}}
 const fPt=(lat,lon,model,fecha)=>jget(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=cloudcover_low,cloudcover_mid,cloudcover_high&timezone=UTC&start_date=${fecha}&end_date=${fecha}&models=${model}`);
 const fVis=(lat,lon,fecha)=>jget(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=visibility&timezone=UTC&start_date=${fecha}&end_date=${fecha}&models=best_match`);
 const fAir=(lat,lon,fecha)=>jget(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=aerosol_optical_depth,dust&timezone=UTC&start_date=${fecha}&end_date=${fecha}`);
-async function fElev(lat,lon){try{const d=await jget(`https://api.open-meteo.com/v1/elevation?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}`);return d.elevation&&d.elevation[0]!=null?d.elevation[0]:null;}catch(e){return null;}}
+async function fElev(lat,lon){try{const d=await jget(`https://api.open-meteo.com/v1/elevation?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}`);return d.elevation&&d.elevation[0]!=null?d.elevation[0]:null;}catch(e){WARN.push('elevación: '+e.message);return null;}}
+// última actualización del modelo (endpoint de estado); devuelve la más reciente disponible
+async function modelUpdated(){
+  try{
+    const d=await jget('https://api.open-meteo.com/data/status.json');
+    // status.json lista modelos con last_run_modification_time (unix). Tomamos el máximo.
+    let mx=0;
+    const walk=o=>{if(o&&typeof o==='object'){for(const k in o){if(k==='last_run_modification_time'&&typeof o[k]==='number')mx=Math.max(mx,o[k]);else walk(o[k]);}}};
+    walk(d); return mx>0?new Date(mx*1000):null;
+  }catch(e){WARN.push('estado modelo: '+e.message);return null;}
+}
 async function nearestTown(lat,lon){
-  // Open-Meteo geocoding no hace reverse; usamos búsqueda inversa por proximidad no disponible.
-  // Alternativa: BigDataCloud reverse (sin clave, CORS abierto).
   try{const d=await jget(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=es`);
-    return d.locality||d.city||d.principalSubdivision||null;}catch(e){return null;}
+    return d.locality||d.city||d.principalSubdivision||null;}catch(e){WARN.push('localidad: '+e.message);return null;}
 }
 async function horizonAngle(lat,lon,az,obsElev){
   const dists=[0.5,1,2,3,5,8,12,18,25,35,50];
@@ -258,6 +433,29 @@ async function horizonAngle(lat,lon,az,obsElev){
   try{const d=await jget(`https://api.open-meteo.com/v1/elevation?latitude=${pts.map(p=>p.lat.toFixed(4)).join(',')}&longitude=${pts.map(p=>p.lon.toFixed(4)).join(',')}`);elevs=d.elevation;}catch(e){return null;}
   let m=-90;for(let i=0;i<dists.length;i++){const a=Math.atan2(elevs[i]-obsElev,dists[i]*1000)*R2D;if(a>m)m=a;}
   return m;
+}
+// perfil denso de horizonte: para cada azimut del rango, ángulo máximo del terreno.
+// Batchea en pocas llamadas (Open-Meteo acepta múltiples coords por petición).
+async function horizonProfile(lat,lon,azMin,azMax,obsElev,stepDeg=2){
+  const dists=[0.5,1,2,3,5,8,12,18,25,35,50];
+  const azs=[]; for(let a=azMin;a<=azMax+1e-9;a+=stepDeg) azs.push(a);
+  // construir todos los puntos (az × dist) y pedirlos en lotes de ~90 coords
+  const allPts=[]; const idx=[];
+  for(const az of azs){ idx.push(allPts.length); for(const d of dists) allPts.push({az,d,...dest(lat,lon,d,az)}); }
+  const batch=90, elevAll=new Array(allPts.length).fill(null);
+  for(let i=0;i<allPts.length;i+=batch){
+    const chunk=allPts.slice(i,i+batch);
+    const r=await jsafe('horizonte',()=>jget(`https://api.open-meteo.com/v1/elevation?latitude=${chunk.map(p=>p.lat.toFixed(4)).join(',')}&longitude=${chunk.map(p=>p.lon.toFixed(4)).join(',')}`));
+    if(r&&r.elevation)for(let j=0;j<chunk.length;j++)elevAll[i+j]=r.elevation[j];
+  }
+  // ángulo máximo por azimut
+  const prof=[];
+  for(let a=0;a<azs.length;a++){
+    let mx=-90; const base=idx[a];
+    for(let k=0;k<dists.length;k++){const e=elevAll[base+k];if(e==null)continue;const ang=Math.atan2(e-obsElev,dists[k]*1000)*R2D;if(ang>mx)mx=ang;}
+    prof.push({az:azs[a], horiz:mx>-90?mx:null});
+  }
+  return prof;
 }
 const parseHM=s=>{const[a,b]=s.split(':').map(Number);return a+(b||0)/60;};
 const idxAt=(times,fecha,utc)=>times.indexOf(`${fecha}T${String(((utc%24)+24)%24).padStart(2,'0')}:00`);
@@ -313,7 +511,12 @@ function onEclipseChange(){
   const lat=+document.getElementById('lat').value, lon=+document.getElementById('lon').value;
   const alt=document.getElementById('alt').value===''?0:+document.getElementById('alt').value;
   const s=eclipseSummary(E,lat,lon,alt);
-  if(!s||s.peak.mag<=0){pill.textContent='Sin eclipse visible aquí';return;}
+  // ajustar ventana horaria por defecto al eclipse seleccionado (evita evaluar fuera del evento)
+  if(E.defWin){
+    document.getElementById('h0').value=E.defWin[0];
+    document.getElementById('h1').value=E.defWin[1];
+  }
+  if(!s||s.peak.mag<=0){pill.textContent='Sin eclipse visible aquí (¿fuera de la franja?)';return;}
   let txt=`máx ${(s.peak.mag*100).toFixed(0)}% a las ${s.fmt(s.peak.h)}`;
   if(s.tot0)txt+=` · totalidad ${s.fmt(s.tot0)}–${s.fmt(s.tot1)}`;
   pill.textContent=txt;
@@ -328,30 +531,36 @@ async function run(){
   const t0=parseHM(document.getElementById('h0').value),t1=parseHM(document.getElementById('h1').value);
   const paso=+document.getElementById('paso').value/60;
   btn.disabled=true;document.getElementById('out').innerHTML='';
+  WARN.length=0;
   try{
     if(!E){st.textContent='Los elementos besselianos del eclipse de 2028 aún no están cargados.';btn.disabled=false;return;}
+    if(t1<=t0){st.textContent='La hora "hasta" debe ser posterior a "desde".';btn.disabled=false;return;}
     // altitud: si vacío -> auto por posición
     let alt; const altRaw=document.getElementById('alt').value.trim();
     let altAuto=false;
     if(altRaw===''){st.textContent='Obteniendo altitud del terreno…';alt=await fElev(lat,lon);if(alt==null)alt=0;altAuto=true;document.getElementById('alt').value=Math.round(alt);}
     else alt=+altRaw;
 
-    st.textContent='Localidad y datos meteo…';
-    const [town,visD,airD]=await Promise.all([nearestTown(lat,lon),fVis(lat,lon,fecha),fAir(lat,lon,fecha)]);
-    // timestamp de emisión / de los datos: Open-Meteo forecast lleva generationtime; usamos la hora actual de consulta y la fecha del modelo
-    const dataFetchedAt=new Date().toISOString().slice(0,16).replace('T',' ');
+    st.textContent='Localidad, meteo y estado del modelo…';
+    const [town,visD,airD,modUpd]=await Promise.all([
+      nearestTown(lat,lon),
+      jsafe('visibilidad',()=>fVis(lat,lon,fecha)),
+      jsafe('aerosoles CAMS',()=>fAir(lat,lon,fecha)),
+      modelUpdated()
+    ]);
+    const modelTime = modUpd? modUpd.toISOString().slice(0,16).replace('T',' ')+' UTC' : null;
 
     const cache=new Map(),key2=(a,b)=>`${a.toFixed(2)}_${b.toFixed(2)}`;
+    let cloudFail=false;
     async function cover(la,lo,layer,utcFrac){
       const k=key2(la,lo);
-      if(!cache.has(k)){st.textContent=`Nubes: punto ${cache.size+1}…`;cache.set(k,await fPt(la,lo,model,fecha));}
-      const d=cache.get(k);return interp(d.hourly['cloudcover_'+layer],d.hourly.time,fecha,utcFrac);
+      if(!cache.has(k)){st.textContent=`Nubes: punto ${cache.size+1}…`;const r=await jsafe('nubes '+model,()=>fPt(la,lo,model,fecha));cache.set(k,r);if(r==null)cloudFail=true;}
+      const d=cache.get(k);if(d==null)return null;return interp(d.hourly['cloudcover_'+layer],d.hourly.time,fecha,utcFrac);
     }
     const horCache=new Map();
     async function horiz(az){const k=az.toFixed(1);if(!horCache.has(k)){horCache.set(k,await horizonAngle(lat,lon,az,alt));}return horCache.get(k);}
 
-    const rows=[];
-    for(let t=t0;t<=t1+1e-9;t+=paso){
+    async function computeRow(t,isTotalityMax){
       const hh=Math.floor(t+1e-9),mm=Math.round((t-hh)*60),utcFrac=t-E.tzoff;
       const dt=new Date(Date.UTC(+fecha.slice(0,4),+fecha.slice(5,7)-1,+fecha.slice(8,10),hh-E.tzoff,mm,0));
       const sp=solarPos(dt,lat,lon);
@@ -370,9 +579,9 @@ async function run(){
       const opac=valid?(1-trans)*100:null;
       const hz=sp.elev>-2?await horiz(sp.az):null;
       const am=airmass(sp.elev);
-      const vis=interp(visD.hourly.visibility,visD.hourly.time,fecha,utcFrac);
-      const aod=interp(airD.hourly.aerosol_optical_depth,airD.hourly.time,fecha,utcFrac);
-      const dust=interp(airD.hourly.dust,airD.hourly.time,fecha,utcFrac);
+      const vis=visD?interp(visD.hourly.visibility,visD.hourly.time,fecha,utcFrac):null;
+      const aod=airD?interp(airD.hourly.aerosol_optical_depth,airD.hourly.time,fecha,utcFrac):null;
+      const dust=airD?interp(airD.hourly.dust,airD.hourly.time,fecha,utcFrac):null;
       const Tcloud=valid?trans:1;
       const tauSlant=(aod!=null&&am!=null)?aod*am:0;
       const Taero=Math.max(0.35,Math.exp(-tauSlant));
@@ -380,21 +589,42 @@ async function run(){
       let fTopo=1; if(hz!=null){const mg=sp.elev-hz;fTopo=mg>0.3?1:(mg<-0.1?0:(mg+0.1)/0.4);}
       const score=Math.round(100*Tcloud*Taero*Tray*fTopo);
       const below=(hz!=null&&sp.elev<hz);
-      rows.push({hh,mm,sp,ob,mag:magR.mag,hz,cells,opac,am,vis,aod,dust,score,below,totality});
+      const ss=Math.round((t-hh-mm/60)*3600); // segundos, para el instante de máximo
+      return {t,hh,mm,ss:isTotalityMax?Math.round((t*3600)%60):0,sp,ob,mag:magR.mag,posAng:magR.posAng,hz,cells,opac,am,vis,aod,dust,score,below,totality,isMax:!!isTotalityMax};
     }
+
+    // instante del máximo del eclipse (para insertar fila de totalidad/máximo si cae en rango)
+    let tMax=null;
+    { const s=eclipseSummary(E,lat,lon,alt); if(s&&s.peak&&s.peak.mag>0) tMax=s.peak.h; }
+    const insertMax=(tMax!=null && tMax>t0 && tMax<t1);
+
+    const rows=[];
+    const stamps=[];
+    for(let t=t0;t<=t1+1e-9;t+=paso) stamps.push({t,max:false});
+    if(insertMax) stamps.push({t:tMax,max:true});
+    stamps.sort((a,b)=>a.t-b.t);
+    for(const s of stamps){ rows.push(await computeRow(s.t,s.max)); }
 
     // ---- render ----
     let html=`<div class="card"><div class="colhead">${E.label} · ${model}</div>`;
     html+=`<div class="meta"><span><b>Lugar:</b> ${town||'—'} (${lat.toFixed(4)}, ${lon.toFixed(4)})</span>`
       +`<span><b>Altitud:</b> ${Math.round(alt)} m${altAuto?' (auto)':''}</span>`
-      +`<span><b>Datos meteo:</b> ${fecha} · consultado ${dataFetchedAt} UTC</span>`
+      +`<span><b>Última actualización modelo:</b> ${modelTime||'no disponible'}</span>`
       +`<span><b>Fuente nubes:</b> Open-Meteo/${model}</span></div>`;
+    if(WARN.length){
+      html+=`<div class="expl" style="border-left-color:#e05252"><b>Avisos de datos (${WARN.length}):</b> `
+        +WARN.map(w=>w.replace(/</g,'&lt;')).join(' · ')
+        +`. Las columnas afectadas muestran <code>s/d</code>.</div>`;
+    }
+    if(cloudFail){
+      html+=`<div class="expl" style="border-left-color:#e05252"><b>Nubosidad no disponible</b> para el modelo <code>${model}</code> en este punto (posible fuera de malla: AROME solo cubre el NE peninsular). Prueba con <code>best_match</code> o <code>ICON-EU</code>.</div>`;
+    }
 
     html+=`<div class="tbl-scroll"><table><thead>`;
-    html+=`<tr><th></th><th colspan="3" class="grp">GEOMETRÍA SOLAR</th><th class="grp sep">LUNA</th>`
+    html+=`<tr><th></th><th colspan="3" class="grp">GEOMETRÍA SOLAR</th><th colspan="2" class="grp sep">LUNA</th>`
       +`<th colspan="7" class="grp sep">NUBOSIDAD EN LÍNEA DE VISIÓN</th><th class="grp sep">·</th>`
       +`<th colspan="4" class="grp sep">EXTINCIÓN</th><th class="grp sep">·</th></tr>`;
-    html+=`<tr><th>Hora</th><th>Az°</th><th>Elev°</th><th>Topo°</th><th class="sep">Obsc%</th>`;
+    html+=`<tr><th class="stickyc">Hora</th><th>Az°</th><th>Elev°</th><th>Topo°</th><th class="sep">Obsc%</th><th>Vista</th>`;
     for(const S of SAMPLES) html+=`<th class="${S.name==='A12'?'sep':''}">${S.name}<br><span class="band">${S.h}km</span></th>`;
     html+=`<th class="sep">Opac</th><th class="sep">AM</th><th>Vis<br><span class="band">km</span></th><th>AOD</th><th>Polvo</th><th class="sep">Score</th></tr></thead><tbody>`;
 
@@ -410,20 +640,24 @@ async function run(){
 
     for(const r of rows){
       let tds='';SAMPLES.forEach((S,i)=>tds+=cloudCell(r.cells[S.name],i===0));
-      const rowClass=(r.below?'below':'')+(r.totality?' totrow':'');
+      const rowClass=(r.below?'below':'')+(r.totality?' totrow':'')+(r.isMax?' maxrow':'');
+      const hora=r.isMax
+        ? `${String(r.hh).padStart(2,'0')}:${String(r.mm).padStart(2,'0')}:${String(r.ss).padStart(2,'0')} ★`
+        : `${String(r.hh).padStart(2,'0')}:${String(r.mm).padStart(2,'0')}`;
       html+=`<tr class="${rowClass}">`
-        +`<td>${String(r.hh).padStart(2,'0')}:${String(r.mm).padStart(2,'0')}</td>`
+        +`<td class="stickyc">${hora}</td>`
         +`<td>${r.sp.az.toFixed(1)}</td>`
         +`<td${r.sp.elev<4?' class="warn"':''}>${r.sp.elev.toFixed(2)}</td>`
         +nCell(r.hz,5,-1,false,1,r.hz==null?null:(r.hz.toFixed(1)+(r.below?'⚠':'')))
-        +nCell(r.ob,0,100,true,0)
+        +nCell(r.ob,100,0,true,0)
+        +`<td>${occultSVG(r.mag,r.posAng,r.totality?'T':'P')}</td>`
         +tds
         +nCell(r.opac,0,100,true,0)
         +nCell(r.am,2,12,true,1)
         +nCell(r.vis==null?null:r.vis/1000,40,5,false,0)
         +nCell(r.aod,0.05,0.5,false,2)
         +nCell(r.dust,5,100,false,0)
-        +nCell(r.score,100,0,true,0)
+        +`<td class="sep"><span class="num" style="color:${scoreColor(r.score)}">${r.score}</span></td>`
         +`</tr>`;
     }
     html+=`</tbody></table></div>`;
@@ -433,9 +667,20 @@ async function run(){
       <span class="chip"><span style="color:#f5744a;font-weight:700">■</span> desfavorable</span>
       <span class="chip">· fila ámbar = totalidad · fila rayada = Sol tras el relieve · Elev&lt;4° en ámbar</span></div>`;
 
+    // ---- Plot de horizonte (azimut × elevación): relieve + trayectoria solar ----
+    st.textContent='Perfil de horizonte…';
+    const azValues=rows.map(r=>r.sp.az).filter(a=>isFinite(a));
+    let plotHtml='';
+    if(azValues.length){
+      const azMin=Math.max(0,Math.floor(Math.min(...azValues))-5), azMax=Math.min(360,Math.ceil(Math.max(...azValues))+5);
+      const profile=await horizonProfile(lat,lon,azMin,azMax,alt,2);
+      plotHtml=buildHorizonPlot(rows,profile,azMin,azMax);
+    }
+    html+=plotHtml;
+
     html+=`<div class="expl"><b>Obsc% (obscuración lunar):</b> fracción del disco solar cubierta por la Luna, calculada por
-      <b>elementos besselianos</b> (Espenak/NASA) para tus coordenadas y altitud exactas. Válido para cualquier punto; los tiempos de contacto
-      y la totalidad se derivan del propio cálculo, no de valores fijos.</div>`;
+      <b>elementos besselianos</b> (Espenak/NASA) para tus coordenadas y altitud exactas. La columna <b>Vista</b> dibuja los dos discos
+      (Sol amarillo, Luna oscura) con su solapamiento y ángulo reales; en la totalidad aparece el halo de la corona. Válido para cualquier punto.</div>`;
     html+=`<div class="expl"><b>Score de visibilidad del disco (0–100):</b>
       <code>Score = 100 · T_nube · T_aero · T_Rayleigh · f_topo</code>. Mide si el Sol es <i>visible</i> (atmósfera + obstáculos), independiente de la obscuración.
       <code>T_nube=∏(1−cᵢ)</code>, <code>T_aero=max(0.35, e^(−AOD·AM))</code>, <code>T_Rayleigh=max(0.30, e^(−0.04·AM))</code>, <code>f_topo</code>=0 tras la montaña.</div>`;
