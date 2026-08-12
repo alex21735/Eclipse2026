@@ -53,6 +53,10 @@
   .modal dt{font-family:var(--mono);font-size:.82rem;color:var(--acc);font-weight:600;white-space:nowrap}
   .modal dd{margin:0;font-size:.88rem;color:var(--ink)}
   .modal .modal-close{margin-top:18px;width:100%}
+  .modal .tip-lead{font-family:var(--mono);font-size:.9rem;color:var(--acc2);margin:0 0 10px;
+    padding:8px 10px;background:var(--panel2);border-radius:8px;border:1px solid var(--line)}
+  td.tipcell{cursor:help}
+  @media (hover:none){ td.tipcell{cursor:pointer} td.tipcell .num{text-decoration:underline dotted rgba(139,151,181,.5);text-underline-offset:2px} }
 
   button{background:var(--acc);color:#1a1200;border:none;border-radius:9px;
     padding:11px 20px;font-size:.95rem;font-weight:680;cursor:pointer}
@@ -79,6 +83,32 @@
   .colhead{color:var(--acc);font-size:.92rem;font-weight:650;margin:2px 0 4px}
   details{margin-top:12px}summary{cursor:pointer;color:var(--dim);font-size:.85rem}
   .note{font-size:.82rem;color:var(--dim);margin-top:8px}
+  /* ---- resumen de fases (contactos) ---- */
+  .phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin:4px 0 14px}
+  .phase{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 8px;text-align:center}
+  .phase.hot{border-color:var(--acc);background:linear-gradient(180deg,rgba(244,185,66,.14),var(--panel2))}
+  .phase .pl{font-size:.62rem;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+  .phase .pt{font-family:var(--mono);font-size:1.02rem;font-weight:700;color:var(--ink)}
+  .phase.hot .pt{color:var(--acc)}
+  .phase .px{font-size:.64rem;color:var(--dim);margin-top:2px}
+  /* ---- rejilla de datos resumen ---- */
+  .dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:4px 0 6px}
+  .dcell{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+  .dcell .dl{font-size:.64rem;color:var(--dim);text-transform:uppercase;letter-spacing:.03em}
+  .dcell .dv{font-family:var(--mono);font-size:.95rem;font-weight:700;color:var(--ink);margin-top:2px}
+  .dcell .dv small{font-size:.7rem;color:var(--dim);font-weight:400}
+  /* ---- enlaces útiles ---- */
+  .links{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:6px}
+  .linkcard{display:flex;gap:11px;align-items:flex-start;text-decoration:none;
+    background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:13px 14px;
+    transition:border-color .15s,transform .15s}
+  .linkcard:hover{border-color:var(--acc2);transform:translateY(-1px)}
+  .linkcard .ic{font-size:1.4rem;line-height:1;flex-shrink:0;margin-top:1px}
+  .linkcard .lt{font-weight:650;color:var(--ink);font-size:.9rem}
+  .linkcard .ld{color:var(--dim);font-size:.76rem;margin-top:2px;line-height:1.35}
+  .linkcard .lu{color:var(--acc2);font-size:.7rem;font-family:var(--mono);margin-top:3px;word-break:break-all}
+  .sec-head{color:var(--acc);font-size:.95rem;font-weight:650;margin:20px 0 4px;display:flex;align-items:center;gap:8px}
+  .sec-head::before{content:"";flex:0 0 3px;height:16px;background:var(--acc);border-radius:2px}
   .expl{font-size:.8rem;color:var(--dim);background:var(--panel2);border-left:3px solid var(--acc);
     padding:9px 12px;border-radius:0 7px 7px 0;margin:10px 0}
   code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:.85em}
@@ -113,7 +143,7 @@
 
   <div class="card">
     <div class="searchrow">
-      <input id="place" placeholder="Buscar localidad (p.ej. Cabanes, Castellón)…" onkeydown="if(event.key==='Enter')geocode()">
+      <input id="place" placeholder="Buscar localidad (p.ej. Madrid, Cabo de Gata, Finisterre)…" onkeydown="if(event.key==='Enter')geocode()">
       <div class="searchbtns">
         <button class="sec" onclick="geocode()">Buscar</button>
         <button class="sec" onclick="useMyLocation()">📍 Mi ubicación</button>
@@ -140,12 +170,20 @@
       </div>
       <div><label>Modelo nubes</label>
         <select id="modelo">
-          <option value="best_match">best_match</option>
-          <option value="icon_eu">ICON-EU (España)</option>
-          <option value="meteofrance_arome_france_hd">AROME HD (NE penín.)</option>
-          <option value="knmi_harmonie_arome_europe">HARMONIE-AROME (península)</option>
-          <option value="gfs_seamless">GFS</option>
-          <option value="ecmwf_ifs025">ECMWF IFS</option>
+          <option value="best_match">best_match (auto)</option>
+          <optgroup label="Alta resolución (≤2.5 km)">
+          <option value="meteofrance_arome_france_hd">AROME HD ~1.3 km (Météo-France)</option>
+          <option value="meteofrance_arome_france">AROME ~1.5 km (Météo-France)</option>
+          <option value="italia_meteo_arpae_icon_2i">ICON-2I ~2 km (ARPAE Italia)</option>
+          <option value="dmi_harmonie_arome_europe">DMI HARMONIE ~2 km (Dinamarca)</option>
+          <option value="knmi_harmonie_arome_europe">KNMI HARMONIE ~2 km (Países Bajos)</option>
+          </optgroup>
+          <optgroup label="Escala sinóptica / global">
+          <option value="icon_eu">ICON-EU ~6.5 km (España)</option>
+          <option value="meteofrance_arpege_europe">ARPEGE ~11 km (Europa)</option>
+          <option value="gfs_seamless">GFS ~11 km</option>
+          <option value="ecmwf_ifs025">ECMWF IFS ~25 km</option>
+          </optgroup>
         </select>
       </div>
     </div>
@@ -348,8 +386,43 @@ function buildHorizonPlot(rows,profile,azMin,azMax){
   return `<div class="card" style="margin-top:16px"><div class="colhead" style="display:flex;justify-content:space-between;align-items:center;gap:10px">`
     +`<span>Horizonte: trayectoria solar vs relieve</span>`
     +`<button class="infobtn" onclick="openVarInfo()">ⓘ ¿Qué es cada variable?</button></div>`
-    +`<div class="note">Cada círculo = un instante del recorrido del Sol. <b>Relleno</b> = score (verde bueno→rojo malo); <b>número</b> = % de ocultación; <b>etiqueta</b> = hora. En la <b>totalidad</b>, solo contorno dorado. Área marrón = horizonte del relieve: donde el Sol cae por debajo, está oculto por montañas. Toca/pasa el ratón por un círculo para ver todos los datos.</div>`
+    +`<div class="note">Relleno = score · número = % ocultación · contorno dorado = totalidad · área marrón = relieve. Toca un círculo para ver sus datos.</div>`
     +`<div class="plotbox" id="plotbox">${s}</div></div>`;
+}
+function buildLinks(lat,lon,alt,SUM,rMax){
+  const la=lat.toFixed(5), lo=lon.toFixed(5), la4=lat.toFixed(4), lo4=lon.toFixed(4);
+  const azSun = rMax&&isFinite(rMax.sp.az) ? Math.round(rMax.sp.az) : 270;
+  const groups=[
+    {head:'🛰️ Satélite en directo', items:[
+      {ic:'🌍',t:'Sat24 — España (visible/IR)',d:'Nubes en tiempo real sobre la península, animación de las últimas horas. Lo más fiable en las horas previas.',u:`https://en.sat24.com/en/es`},
+      {ic:'🛰️',t:'EUMETSAT View',d:'Visor oficial europeo centrado en tus coordenadas. Capas visible de alta resolución y RGB.',u:`https://view.eumetsat.int/productviewer?v=default&center=${lo4},${la4}&zoom=8`},
+      {ic:'⛅',t:'Windy — satélite + nubes',d:'Satélite y capas de nube baja/media/alta navegables hora a hora en tu punto.',u:`https://www.windy.com/${la4}/${lo4}?satellite,${la4},${lo4},9`},
+      {ic:'🌦️',t:'Ventusky — nubes por capas',d:'Nubosidad por niveles con animación temporal sobre tu ubicación.',u:`https://www.ventusky.com/?p=${la4};${lo4};9&l=clouds-total`},
+    ]},
+    {head:'📷 Cámaras en directo', items:[
+      {ic:'📹',t:'Windy Webcams cercanas',d:'Webcams públicas próximas a tus coordenadas: comprueba el cielo real hacia el horizonte.',u:`https://www.windy.com/webcams?${la4},${lo4},9`},
+      {ic:'🎥',t:'Skylinewebcams',d:'Directorio de cámaras en directo por región; útil para costa y horizonte.',u:`https://www.skylinewebcams.com/es.html`},
+    ]},
+    {head:'⛰️ Horizonte y relieve', items:[
+      {ic:'🏔️',t:'PeakFinder — horizonte real',d:`Panorama del relieve desde tu punto, orientado al azimut del Sol (${azSun}°). Confirma si alguna montaña tapa la puesta.`,u:`https://www.peakfinder.com/es/?lat=${la}&lng=${lo}&azi=${azSun}&alt=0&fov=45&cfg=es`},
+      {ic:'🗺️',t:'Google Maps — punto exacto',d:'Tu emplazamiento en el mapa: accesos, aparcamiento y línea de costa.',u:`https://www.google.com/maps/@${la},${lo},15z`},
+    ]},
+    {head:'🌘 Eclipse y astronomía', items:[
+      {ic:'🔭',t:'Xavier Jubier — mapa interactivo',d:'Mapa oficial del eclipse con circunstancias locales exactas al pinchar tu punto (contactos, duración, altura).',u:`https://xjubier.free.fr/en/site_pages/solar_eclipses/TSE_2026_GoogleMapFull.html`},
+      {ic:'⏱️',t:'timeanddate — eclipse',d:'Horas de cada fase y simulación para tu localización, con cuenta atrás.',u:`https://www.timeanddate.com/eclipse/in/spain`},
+      {ic:'☀️',t:'AEMET — predicción oficial',d:'Predicción meteorológica oficial de España (HARMONIE-AROME 2.5 km sobre Iberia), que no está incluida en Open-Meteo.',u:`https://www.aemet.es/es/eltiempo/prediccion/municipios`},
+    ]},
+  ];
+  let h=`<div class="sec-head">Enlaces útiles</div>`;
+  h+=`<div class="note" style="margin:0 0 10px">Generados con tus coordenadas (${la4}, ${lo4}). Se abren en pestaña nueva.</div>`;
+  for(const g of groups){
+    h+=`<div class="colhead" style="font-size:.8rem;margin:14px 0 6px">${g.head}</div>`;
+    h+=`<div class="links">`+g.items.map(it=>
+      `<a class="linkcard" href="${it.u}" target="_blank" rel="noopener noreferrer">`
+      +`<span class="ic">${it.ic}</span><span><span class="lt">${it.t}</span>`
+      +`<span class="ld">${it.d}</span></span></a>`).join('')+`</div>`;
+  }
+  return h;
 }
 function eclipseSummary(E,lat,lonE,hM){
   if(!E)return null;
@@ -650,6 +723,7 @@ async function run(){
     for(const s of stamps){ rows.push(await computeRow(s.t,s.max)); }
 
     // ---- render ----
+    const SUM=eclipseSummary(E,lat,lon,alt);
     let html=`<div class="card"><div class="colhead">${E.label} · ${model}</div>`;
     html+=`<div class="meta"><span><b>Lugar:</b> ${town||'—'} (${lat.toFixed(4)}, ${lon.toFixed(4)})</span>`
       +`<span><b>Altitud:</b> ${Math.round(alt)} m${altAuto?' (auto)':''}</span>`
@@ -661,9 +735,57 @@ async function run(){
         +`. Las columnas afectadas muestran <code>s/d</code>.</div>`;
     }
     if(cloudFail){
-      html+=`<div class="expl" style="border-left-color:#e05252"><b>Nubosidad no disponible</b> para el modelo <code>${model}</code> en este punto (posible fuera de malla: AROME solo cubre el NE peninsular). Prueba con <code>best_match</code> o <code>ICON-EU</code>.</div>`;
+      html+=`<div class="expl" style="border-left-color:#e05252"><b>Nubosidad no disponible</b> para <code>${model}</code> en este punto — el modelo no devuelve datos aquí (fuera de su malla, respuesta con <code>latitude:nan</code> o sin bloque <code>hourly</code>). Prueba otro modelo de alta resolución de la lista, o <code>best_match</code>/<code>ICON-EU</code> como respaldo de cobertura garantizada.</div>`;
     }
 
+    // ===== 1) RESUMEN: fases (contactos) + datos clave =====
+    const rMaxR=rows.find(r=>r.isMax)||rows.reduce((a,b)=>b.ob>(a?a.ob:-1)?b:a,null);
+    const hayTotR=rows.some(r=>r.totality);
+    if(SUM){
+      const ph=[];
+      if(SUM.c1!=null) ph.push({l:'C1 · 1er contacto',t:SUM.fmt(SUM.c1),x:'inicio parcial'});
+      if(E.type==='T'&&SUM.tot0!=null) ph.push({l:'C2 · totalidad',t:SUM.fmt(SUM.tot0),x:'empieza total',hot:1});
+      if(SUM.peak&&SUM.peak.mag>0) ph.push({l:'Máximo',t:SUM.fmt(SUM.peak.h),x:`${Math.round(Math.min(100,SUM.peak.mag*100))}% ocult.`,hot:E.type==='T'?0:1});
+      if(E.type==='T'&&SUM.tot1!=null) ph.push({l:'C3 · fin total',t:SUM.fmt(SUM.tot1),x:'fin total',hot:1});
+      if(SUM.c4!=null) ph.push({l:'C4 · fin parcial',t:SUM.fmt(SUM.c4),x:'fin eclipse'});
+      if(E.type==='T'&&SUM.tot0!=null&&SUM.tot1!=null){
+        const durS=Math.round((SUM.tot1-SUM.tot0)*3600);
+        ph.push({l:'Duración total',t:`${Math.floor(durS/60)}m ${durS%60}s`,x:'de totalidad',hot:1});
+      }
+      html+=`<div class="phases">`+ph.map(p=>`<div class="phase${p.hot?' hot':''}"><div class="pl">${p.l}</div><div class="pt">${p.t}</div><div class="px">${p.x}</div></div>`).join('')+`</div>`;
+    }
+    // datos clave del instante de máximo
+    if(rMaxR){
+      const d=[];
+      d.push({l:'Ocultación máx.',v:`${Math.round(rMaxR.ob)}<small>%</small>`});
+      d.push({l:'Elevación Sol',v:`${rMaxR.sp.elev.toFixed(1)}<small>°</small>`});
+      d.push({l:'Azimut',v:`${rMaxR.sp.az.toFixed(0)}<small>° ${azToCompass(rMaxR.sp.az)}</small>`});
+      d.push({l:'Horiz. relieve',v:rMaxR.hz==null?'s/d':`${rMaxR.hz.toFixed(1)}<small>°</small>`});
+      if(rMaxR.opac!=null) d.push({l:'Opacidad nubes',v:`${Math.round(rMaxR.opac)}<small>%</small>`});
+      if(rMaxR.am!=null) d.push({l:'Masa de aire',v:`${rMaxR.am.toFixed(1)}<small>×</small>`});
+      if(rMaxR.aod!=null) d.push({l:'AOD (aerosoles)',v:rMaxR.aod.toFixed(2)});
+      if(rMaxR.dust!=null) d.push({l:'Polvo',v:`${Math.round(rMaxR.dust)}`});
+      d.push({l:'Score',v:`${rMaxR.score}<small>/100</small>`});
+      html+=`<div class="dgrid">`+d.map(x=>`<div class="dcell"><div class="dl">${x.l}</div><div class="dv">${x.v}</div></div>`).join('')+`</div>`;
+      const tipo = hayTotR
+        ? `Eclipse <b>total</b> desde aquí: corona visible y caída de luz como al anochecer durante los segundos de totalidad.`
+        : `Eclipse <b>parcial</b> (máx ${Math.round(rMaxR.ob)}%): filtro solar homologado en todo momento.`;
+      const bajo = rMaxR.sp.elev<6 ? ` El Sol estará <b>muy bajo</b> — necesitas horizonte despejado hacia el ${azToCompass(rMaxR.sp.az)}.` : '';
+      html+=`<div class="expl">${tipo}${bajo} Nunca mires al Sol sin filtro salvo en la totalidad completa.</div>`;
+    }
+
+    // ===== 2) GRÁFICA (trayectoria vs relieve) =====
+    st.textContent='Perfil de horizonte…';
+    {
+      const azValues=rows.map(r=>r.sp.az).filter(a=>isFinite(a));
+      if(azValues.length){
+        const azMin=Math.max(0,Math.floor(Math.min(...azValues))-5), azMax=Math.min(360,Math.ceil(Math.max(...azValues))+5);
+        const profile=await horizonProfile(lat,lon,azMin,azMax,alt,2);
+        html+=buildHorizonPlot(rows,profile,azMin,azMax);
+      }
+    }
+
+    // ===== 3) TABLA =====
     html+=`<div class="tbl-scroll"><table><thead>`;
     html+=`<tr><th></th><th colspan="3" class="grp">SOL</th><th colspan="2" class="grp sep">LUNA</th>`
       +`<th colspan="7" class="grp sep">NUBES EN LÍNEA DE VISIÓN</th><th class="grp sep">·</th>`
@@ -682,36 +804,77 @@ async function run(){
       +`<th title="Concentración de polvo en suspensión (calima).">Polvo</th>`
       +`<th class="sep" title="Puntuación 0–100 de visibilidad del disco solar combinando nubes, aerosoles y relieve. No mide la ocultación, sino si el Sol se verá.">Score</th></tr></thead><tbody>`;
 
-    const cloudCell=(x,sep)=>{const c=sep?' class="sep"':'';
+    // esc: escapa comillas para meter la frase larga en atributos HTML
+    const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const tipAttr=(o)=> o&&o.m ? ` class="tipcell" title="${esc(o.t)}" data-m="${esc(o.m)}"` : '';
+    // combina clase base (sep) con los atributos de tooltip
+    const mergeSep=(attr,sep)=>{ if(!sep) return attr; return attr.includes('class="') ? attr.replace('class="','class="sep ') : attr+' class="sep"'; };
+
+    const cloudCell=(x,S,sep)=>{const tip=interpCloud(x,S);const a=mergeSep(tipAttr(tip),sep);const c=sep&&!a.includes('class=')?' class="sep"':'';
       if(!x)return`<td${c}>—</td>`;
-      if(x.st==='h')return`<td${c} style="color:#5a6787">↓h</td>`;
-      if(x.st==='f')return`<td${c} style="color:#5a6787">∞</td>`;
-      if(x.c==null)return`<td${c} style="color:#5a6787">s/d</td>`;
-      return`<td${c}><span class="num" style="color:${scale(x.c,0,100)}">${Math.round(x.c)}</span><span class="band"> ${Math.round(x.d)}</span></td>`;};
-    const nCell=(v,good,bad,sep,dec=0,txt=null)=>{const c=sep?' class="sep"':'';
-      if(v==null||isNaN(v))return`<td${c} style="color:#5a6787">s/d</td>`;
-      return`<td${c}><span class="num" style="color:${scale(v,good,bad)}">${txt!=null?txt:v.toFixed(dec)}</span></td>`;};
+      if(x.st==='h')return`<td${a||c} style="color:#5a6787">↓h</td>`;
+      if(x.st==='f')return`<td${a||c} style="color:#5a6787">∞</td>`;
+      if(x.c==null)return`<td${a||c} style="color:#5a6787">s/d</td>`;
+      return`<td${a||c}><span class="num" style="color:${scale(x.c,0,100)}">${Math.round(x.c)}</span><span class="band"> ${Math.round(x.d)}</span></td>`;};
+    const nCell=(v,good,bad,sep,dec=0,txt=null,tipKey=null)=>{const tip=tipKey?interpVar(tipKey,v):null;const a=mergeSep(tipAttr(tip),sep);const c=sep&&!a.includes('class=')?' class="sep"':'';
+      if(v==null||isNaN(v))return`<td${a||c} style="color:#5a6787">s/d</td>`;
+      return`<td${a||c}><span class="num" style="color:${scale(v,good,bad)}">${txt!=null?txt:v.toFixed(dec)}</span></td>`;};
+
+    // ---- Interpretación en lenguaje natural por celda (tooltip escritorio + modal móvil) ----
+    // Devuelve {t, m} : t = frase corta para hover/title, m = frase larga para el modal táctil.
+    const capa=h=> h>=6?'cirros/nubes altas':(h>=2?'nubes medias':'nubes bajas');
+    const interpCloud=(x,S)=>{
+      if(!x||x.st==='h') return {t:`${S.name} (${S.h} km)`, m:`Capa ${S.name} a ${S.h} km. Sol bajo el horizonte: sin dato.`};
+      if(x.st==='f') return {t:`${S.name}: fuera de alcance`, m:`A ${S.h} km de altura, la línea de visión al Sol saldría de la atmósfera útil (∞): esa capa no intercepta la luz en este instante.`};
+      if(x.c==null) return {t:`${S.name}: sin dato`, m:`Capa ${S.name} (${S.h} km): el modelo no da nubosidad aquí.`};
+      const op=Math.round(x.c), km=Math.round(x.d);
+      const nivel = op===0?'despejado':(op<15?'casi despejado':(op<40?'nubosidad ligera':(op<70?'nubosidad moderada':'muy nuboso')));
+      const frase = op===0
+        ? `Sin ${capa(S.h)} en la dirección del Sol a ${S.h} km de altura (a unos ${km} km de distancia en línea de visión).`
+        : `${capa(S.h).replace(/^./,c=>c.toUpperCase())} a ${S.h} km de altura, que en la dirección del Sol están a unos ${km} km de distancia, con una opacidad del ${op}% (${nivel}).`;
+      return {t:`${S.name}: ${op}% opac · ${km} km · ${nivel}`, m:frase};
+    };
+    const interpVar=(key,v)=>{
+      if(v==null||isNaN(v)) return {t:'sin dato', m:'El modelo no proporciona este valor aquí.'};
+      switch(key){
+        case 'topo':{const b=v; return {t:`Relieve a ${b.toFixed(1)}°`, m:`El horizonte del terreno se eleva ${b.toFixed(1)}° en la dirección del Sol. Si la elevación solar cae por debajo, el Sol queda oculto tras el relieve.`};}
+        case 'obsc':{const n=v<1?'sin eclipse aún':(v<50?'parcial inicial':(v<99?'parcial avanzada':(v>=100?'TOTALIDAD':'casi total'))); return {t:`Ocultación ${Math.round(v)}%`, m:`La Luna cubre el ${Math.round(v)}% del disco solar (${n}).`};}
+        case 'opac':{const n=v<15?'despejado':(v<40?'ligera':(v<70?'moderada':'cielo tapado')); return {t:`Opacidad ${Math.round(v)}%`, m:`Opacidad combinada de toda la columna de nubes: ${Math.round(v)}% (${n}). Es la probabilidad efectiva de que las nubes tapen el Sol.`};}
+        case 'am':{const n=v<2?'atmósfera fina (Sol alto)':(v<5?'moderada':(v<11?'gruesa (Sol bajo)':'extrema (Sol casi en el horizonte)')); const mag=(0.35*v).toFixed(1); return {t:`Masa de aire ${v.toFixed(1)}×`, m:`La luz atraviesa ${v.toFixed(1)} veces la atmósfera que atravesaría en el cénit (${n}). Atenúa el disco unas ${mag} magnitudes y lo enrojece.`};}
+        case 'vis':{const n=v>30?'excelente':(v>15?'buena':(v>8?'reducida (bruma)':'mala (calima densa)')); return {t:`Visibilidad ${Math.round(v)} km`, m:`Visibilidad horizontal ${Math.round(v)} km (${n}).`};}
+        case 'aod':{const n=v<0.1?'aire limpio':(v<0.2?'ligera turbidez':(v<0.35?'turbidez apreciable':'muy turbio/calima')); return {t:`AOD ${v.toFixed(2)}`, m:`Profundidad óptica de aerosoles ${v.toFixed(2)} (${n}). Cuanto mayor, más se atenúa y enrojece la luz solar.`};}
+        case 'dust':{const n=v<10?'insignificante':(v<50?'calima leve':(v<150?'calima moderada':'calima intensa')); return {t:`Polvo ${Math.round(v)}`, m:`Polvo en suspensión ${Math.round(v)} µg/m³ (${n}).`};}
+        case 'score':{const n=v>=35?'buena':(v>=20?'aceptable':(v>0?'pobre':'nula: Sol tras relieve')); return {t:`Score ${v}/100`, m:`Puntuación de visibilidad del disco ${v}/100 (${n}), combinando nubes, aerosoles y relieve. No mide la ocultación lunar, sino si el Sol se verá.`};}
+        case 'elev':{const n=v<0?'bajo el horizonte':(v<4?'muy bajo, observación difícil':(v<15?'bajo':'alto')); return {t:`Elevación ${v.toFixed(1)}°`, m:`El Sol está a ${v.toFixed(1)}° sobre el horizonte astronómico (${n}).`};}
+        case 'az':{const dir=v<45?'N':(v<135?'E':(v<225?'S':(v<315?'O':'N'))); return {t:`Azimut ${v.toFixed(1)}°`, m:`El Sol está en rumbo ${v.toFixed(1)}° (hacia el ${dir}). Es la dirección del horizonte donde mirar.`};}
+      }
+      return {t:'', m:''};
+    };
 
     for(const r of rows){
-      let tds='';SAMPLES.forEach((S,i)=>tds+=cloudCell(r.cells[S.name],i===0));
+      let tds='';SAMPLES.forEach((S,i)=>tds+=cloudCell(r.cells[S.name],S,i===0));
+      const azTip=tipAttr(interpVar('az',r.sp.az));
+      const elTip=interpVar('elev',r.sp.elev);
+      const elAttr=r.sp.elev<4 ? mergeSep(tipAttr(elTip),false).replace('class="','class="warn ') : tipAttr(elTip);
+      const scTip=tipAttr(interpVar('score',r.score));
       const rowClass=(r.below?'below':'')+(r.totality?' totrow':'')+(r.isMax?' maxrow':'');
       const hora=r.isMax
         ? `${String(r.hh).padStart(2,'0')}:${String(r.mm).padStart(2,'0')}:${String(r.ss).padStart(2,'0')} ★`
         : `${String(r.hh).padStart(2,'0')}:${String(r.mm).padStart(2,'0')}`;
       html+=`<tr class="${rowClass}">`
         +`<td class="stickyc">${hora}</td>`
-        +`<td>${r.sp.az.toFixed(1)}</td>`
-        +`<td${r.sp.elev<4?' class="warn"':''}>${r.sp.elev.toFixed(2)}</td>`
-        +nCell(r.hz,5,-1,false,1,r.hz==null?null:(r.hz.toFixed(1)+(r.below?'⚠':'')))
-        +nCell(r.ob,100,0,true,0)
+        +`<td${azTip}>${r.sp.az.toFixed(1)}</td>`
+        +`<td${elAttr||(r.sp.elev<4?' class="warn"':'')}>${r.sp.elev.toFixed(2)}</td>`
+        +nCell(r.hz,5,-1,false,1,r.hz==null?null:(r.hz.toFixed(1)+(r.below?'⚠':'')),'topo')
+        +nCell(r.ob,100,0,true,0,null,'obsc')
         +`<td>${occultSVG(r.mag,r.posAng,r.totality?'T':'P')}</td>`
         +tds
-        +nCell(r.opac,0,100,true,0)
-        +nCell(r.am,2,12,true,1)
-        +nCell(r.vis==null?null:r.vis/1000,40,5,false,0)
-        +nCell(r.aod,0.05,0.5,false,2)
-        +nCell(r.dust,5,100,false,0)
-        +`<td class="sep"><span class="num" style="color:${scoreColor(r.score)}">${r.score}</span></td>`
+        +nCell(r.opac,0,100,true,0,null,'opac')
+        +nCell(r.am,2,12,true,1,null,'am')
+        +nCell(r.vis==null?null:r.vis/1000,40,5,false,0,null,'vis')
+        +nCell(r.aod,0.05,0.5,false,2,null,'aod')
+        +nCell(r.dust,5,100,false,0,null,'dust')
+        +`<td class="sep tipcell" title="${esc(interpVar('score',r.score).t)}" data-m="${esc(interpVar('score',r.score).m)}"><span class="num" style="color:${scoreColor(r.score)}">${r.score}</span></td>`
         +`</tr>`;
     }
     html+=`</tbody></table></div>`;
@@ -721,40 +884,19 @@ async function run(){
       <span class="chip"><span style="color:#f5744a;font-weight:700">■</span> desfavorable</span>
       <span class="chip">· fila ámbar = totalidad · fila rayada = Sol tras el relieve · Elev&lt;4° en ámbar</span></div>`;
 
-    // ---- Plot de horizonte (azimut × elevación): relieve + trayectoria solar ----
-    st.textContent='Perfil de horizonte…';
-    const azValues=rows.map(r=>r.sp.az).filter(a=>isFinite(a));
-    let plotHtml='';
-    if(azValues.length){
-      const azMin=Math.max(0,Math.floor(Math.min(...azValues))-5), azMax=Math.min(360,Math.ceil(Math.max(...azValues))+5);
-      const profile=await horizonProfile(lat,lon,azMin,azMax,alt,2);
-      plotHtml=buildHorizonPlot(rows,profile,azMin,azMax);
-    }
-    html+=plotHtml;
-
-    // datos interesantes de la observación (dinámicos)
-    const rMax=rows.find(r=>r.isMax)||rows.reduce((a,b)=>b.ob>(a?a.ob:-1)?b:a,null);
-    const hayTot=rows.some(r=>r.totality);
-    const elevMax=rMax?rMax.sp.elev:null, azMax=rMax?rMax.sp.az:null;
-    let facts=[];
-    if(rMax){
-      facts.push(`El máximo de ocultación (${Math.round(rMax.ob)}%) ocurre a las <b>${String(rMax.hh).padStart(2,'0')}:${String(rMax.mm).padStart(2,'0')}${rMax.isMax?':'+String(rMax.ss).padStart(2,'0'):''}</b>, con el Sol a <b>${elevMax.toFixed(1)}°</b> de altura en azimut ${azMax.toFixed(0)}° (${azToCompass(azMax)}).`);
-    }
-    if(hayTot) facts.push(`Desde aquí el eclipse es <b>total</b>: la Luna cubre por completo el Sol. Podrás ver la corona solar y bajará la luz como al anochecer.`);
-    else if(rMax) facts.push(`Desde aquí el eclipse es <b>parcial</b> (máx ${Math.round(rMax.ob)}%). Necesitarás filtro solar todo el tiempo; no habrá totalidad.`);
-    if(elevMax!=null && elevMax<6) facts.push(`El Sol estará <b>muy bajo</b> sobre el horizonte: busca un punto con vista despejada hacia el ${azToCompass(azMax)}, sin montañas ni edificios.`);
-    facts.push(`Nunca mires al Sol sin filtro solar homologado, salvo durante los segundos de totalidad completa.`);
-    html+=`<div class="expl"><b>Sobre esta observación:</b><br>· ${facts.join('<br>· ')}</div>`;
-
-    // cómo se calcula (breve, visible)
-    html+=`<div class="expl"><b>Ocultación (%):</b> cuánto del Sol tapa la Luna, calculado con la geometría real Sol–Luna–observador para tus coordenadas.
-      <br><b>Score (0–100):</b> si el Sol <i>se verá</i>, combinando nubes en la línea de visión, turbidez del aire y si hay montañas delante. Es un índice orientativo, no una probabilidad.</div>`;
-
+    // botones de exportación
     html+=`<div style="margin-top:4px">
       <button class="exp-btn" onclick="exportData()">⭳ Extraer datos (texto)</button>
       <button class="exp-btn" onclick="copyData()">⧉ Copiar</button>
       <button class="exp-btn" onclick="exportCSV()">⭳ CSV</button>
       <textarea id="exparea" readonly></textarea></div>`;
+
+    // ===== 4) ENLACES ÚTILES (dinámicos con las coordenadas cargadas) =====
+    html+=buildLinks(lat,lon,alt,SUM,rMaxR);
+
+    // cómo se calcula (breve, visible)
+    html+=`<div class="expl"><b>Ocultación (%):</b> cuánto del Sol tapa la Luna, calculado con la geometría real Sol–Luna–observador para tus coordenadas.
+      <br><b>Score (0–100):</b> si el Sol <i>se verá</i>, combinando nubes en la línea de visión, turbidez del aire y si hay montañas delante. Es un índice orientativo, no una probabilidad.</div>`;
 
     html+=`<details><summary>Ver más — método y detalles técnicos</summary><div class="note">
       <b>Ocultación / tiempos:</b> elementos besselianos del Five Millennium Canon (F. Espenak, NASA), evaluados con posición topocéntrica del observador (lat/lon/altitud). Validado contra tiempos oficiales del IGN para 2026 y 2027. La columna <b>Vista</b> dibuja ambos discos con su ángulo real. 2028 (anular) pendiente de cargar.<br>
@@ -762,7 +904,7 @@ async function run(){
       <b>Geometría solar:</b> algoritmo NOAA. <b>Topo°:</b> ángulo máximo del terreno (SRTM ~90 m) muestreado a 0.5–50 km en el azimut del Sol; no incluye vegetación ni edificios.<br>
       <b>Nubes en línea de visión:</b> 7 rayos a distintas alturas, distancia <code>d=hₖ/tan(elev)</code>. Datos horarios interpolados al paso elegido. A elevaciones bajas el error de altura se amplifica ×(1/tan elev) (≈×14 a 4°).<br>
       <b>Masa de aire</b> Kasten–Young · <b>Visibilidad</b> en superficie · <b>AOD/Polvo</b> de Copernicus CAMS · <b>Altitud</b> automática vía SRTM si se deja vacía.<br>
-      <b>Cobertura de modelos:</b> ICON-D2 no cubre España; AROME solo el NE peninsular; para el resto usa best_match, ICON-EU, GFS o ECMWF.<br>
+      <b>Cobertura de modelos:</b> los modelos de alta resolución (≤2.5 km) cubren solo el dominio de su servicio nacional, que no siempre incluye toda la península. Los AROME de Météo-France son los que mejor cubren España; los HARMONIE de KNMI/DMI están centrados en el mar del Norte y el ICON-2I italiano en el Mediterráneo central, así que pueden no llegar a algunas zonas (sobre todo sur y oeste). Si un modelo no da datos en tu punto, verás un aviso de «fuera de malla»: cambia a otro de alta resolución, o usa best_match (elige el mejor disponible en cada punto), ICON-EU, ARPEGE, GFS o ECMWF, de cobertura peninsular garantizada. AEMET opera su propio HARMONIE-AROME (2.5 km) sobre Iberia, pero no está en Open-Meteo: se consulta por su API o su web.<br>
       <b>Fuentes:</b> Open-Meteo (CC-BY 4.0), DWD/Météo-France/ECMWF, Copernicus CAMS, SRTM/NASA. Índice orientativo, no predicción oficial: consulta AEMET e IGN.
     </div></details></div>`;
 
@@ -812,6 +954,7 @@ onEclipseChange();
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="varinfo-title">
     <h3 id="varinfo-title">Variables del gráfico y la tabla</h3>
     <div class="modal-sub">Índice de observabilidad orientativo. Toca fuera del recuadro o «Cerrar» para salir.</div>
+    <p class="tip-lead" id="tip-lead" hidden></p>
     <dl>
       <dt>Azimut</dt><dd>Rumbo del Sol en grados (0°=N, 90°=E, 180°=S, 270°=O). Indica hacia dónde mirar en el horizonte.</dd>
       <dt>Elevación</dt><dd>Altura angular del Sol sobre el horizonte astronómico (0°=horizonte, 90°=cénit).</dd>
@@ -828,7 +971,12 @@ onEclipseChange();
   </div>
 </div>
 <script>
-function openVarInfo(){document.getElementById('varinfo').hidden=false;}
+function openVarInfo(leadText){
+  const lead=document.getElementById('tip-lead');
+  if(leadText){ lead.textContent=leadText; lead.hidden=false; }
+  else { lead.hidden=true; lead.textContent=''; }
+  document.getElementById('varinfo').hidden=false;
+}
 function closeVarInfo(){document.getElementById('varinfo').hidden=true;}
 // cerrar al tocar el fondo (fuera del recuadro) — clave en iOS donde no hay hover ni Esc fiable
 document.getElementById('varinfo').addEventListener('click',e=>{
@@ -837,6 +985,11 @@ document.getElementById('varinfo').addEventListener('click',e=>{
 // cerrar con Escape en escritorio
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape' && !document.getElementById('varinfo').hidden) closeVarInfo();
+});
+// táctil: tocar una celda con interpretación abre el modal con su frase (delegado, sobrevive a re-render)
+document.addEventListener('click',e=>{
+  const td=e.target.closest && e.target.closest('td.tipcell');
+  if(td && td.dataset.m){ openVarInfo(td.dataset.m); }
 });
 </script>
 </body>
