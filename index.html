@@ -38,13 +38,22 @@
   }
   .plotbox{width:100%}
   .plotbox svg{width:100%;height:auto;display:block}
-  .plotbox.plotfull, .plotbox.plotfull-css{
-    position:fixed;inset:0;z-index:9999;background:#0a0e1a;
-    display:flex;align-items:center;justify-content:center;padding:12px}
-  .plotbox.plotfull svg, .plotbox.plotfull-css svg{
-    width:auto;height:auto;max-width:100%;max-height:100%}
-  .plotbox.plotfull-css::after{content:"Toca ⛶ de nuevo para salir";position:fixed;bottom:10px;left:0;right:0;
-    text-align:center;color:#8b97b5;font-size:12px}
+  .infobtn{background:var(--panel2);color:var(--acc2);border:1px solid var(--line);
+    border-radius:8px;padding:4px 10px;font-size:.78rem;font-weight:600;cursor:pointer;flex-shrink:0}
+  .infobtn:hover{border-color:var(--acc2)}
+  .modal-back{position:fixed;inset:0;z-index:9998;background:rgba(4,7,15,.72);
+    display:flex;align-items:center;justify-content:center;padding:16px}
+  .modal-back[hidden]{display:none}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    max-width:560px;width:100%;max-height:82vh;overflow-y:auto;
+    padding:20px;-webkit-overflow-scrolling:touch}
+  .modal h3{margin:0 0 4px;font-size:1.05rem}
+  .modal .modal-sub{color:var(--dim);font-size:.82rem;margin-bottom:14px}
+  .modal dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 14px;align-items:baseline}
+  .modal dt{font-family:var(--mono);font-size:.82rem;color:var(--acc);font-weight:600;white-space:nowrap}
+  .modal dd{margin:0;font-size:.88rem;color:var(--ink)}
+  .modal .modal-close{margin-top:18px;width:100%}
+
   button{background:var(--acc);color:#1a1200;border:none;border-radius:9px;
     padding:11px 20px;font-size:.95rem;font-weight:680;cursor:pointer}
   button.sec{background:var(--panel2);color:var(--ink);border:1px solid var(--line);font-weight:600}
@@ -134,6 +143,7 @@
           <option value="best_match">best_match</option>
           <option value="icon_eu">ICON-EU (España)</option>
           <option value="meteofrance_arome_france_hd">AROME HD (NE penín.)</option>
+          <option value="knmi_harmonie_arome_europe">HARMONIE-AROME (península)</option>
           <option value="gfs_seamless">GFS</option>
           <option value="ecmwf_ifs025">ECMWF IFS</option>
         </select>
@@ -335,9 +345,9 @@ function buildHorizonPlot(rows,profile,azMin,azMax){
     }
   }
   s+=`</svg>`;
-  return `<div class="card" style="margin-top:16px"><div class="colhead" style="display:flex;justify-content:space-between;align-items:center">`
+  return `<div class="card" style="margin-top:16px"><div class="colhead" style="display:flex;justify-content:space-between;align-items:center;gap:10px">`
     +`<span>Horizonte: trayectoria solar vs relieve</span>`
-    +`<button class="exp-btn" style="margin:0" onclick="togglePlotFull(this)">⛶ Pantalla completa</button></div>`
+    +`<button class="infobtn" onclick="openVarInfo()">ⓘ ¿Qué es cada variable?</button></div>`
     +`<div class="note">Cada círculo = un instante del recorrido del Sol. <b>Relleno</b> = score (verde bueno→rojo malo); <b>número</b> = % de ocultación; <b>etiqueta</b> = hora. En la <b>totalidad</b>, solo contorno dorado. Área marrón = horizonte del relieve: donde el Sol cae por debajo, está oculto por montañas. Toca/pasa el ratón por un círculo para ver todos los datos.</div>`
     +`<div class="plotbox" id="plotbox">${s}</div></div>`;
 }
@@ -795,28 +805,39 @@ function exportCSV(){
   a.href=url;a.download=`eclipse_${m.fecha}.csv`;a.click();URL.revokeObjectURL(url);
 }
 
-function togglePlotFull(btn){
-  const box=document.getElementById('plotbox');
-  if(!box)return;
-  const fsEl=document.fullscreenElement||document.webkitFullscreenElement;
-  if(!fsEl){
-    const req=box.requestFullscreen||box.webkitRequestFullscreen;
-    if(req){ box.classList.add('plotfull'); req.call(box).catch(()=>{ // fallback: modo CSS a pantalla
-      box.classList.add('plotfull-css'); }); }
-    else { box.classList.toggle('plotfull-css'); } // navegadores sin Fullscreen API
-  }else{
-    const ex=document.exitFullscreen||document.webkitExitFullscreen;
-    if(ex) ex.call(document);
-    box.classList.remove('plotfull','plotfull-css');
-  }
-}
-document.addEventListener('fullscreenchange',()=>{
-  const box=document.getElementById('plotbox');
-  if(box && !document.fullscreenElement){box.classList.remove('plotfull');}
-});
-
 // init
 onEclipseChange();
+</script>
+<div class="modal-back" id="varinfo" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="varinfo-title">
+    <h3 id="varinfo-title">Variables del gráfico y la tabla</h3>
+    <div class="modal-sub">Índice de observabilidad orientativo. Toca fuera del recuadro o «Cerrar» para salir.</div>
+    <dl>
+      <dt>Azimut</dt><dd>Rumbo del Sol en grados (0°=N, 90°=E, 180°=S, 270°=O). Indica hacia dónde mirar en el horizonte.</dd>
+      <dt>Elevación</dt><dd>Altura angular del Sol sobre el horizonte astronómico (0°=horizonte, 90°=cénit).</dd>
+      <dt>Horizonte relieve (topo)</dt><dd>Altura angular del perfil del terreno (montañas) en ese azimut, de SRTM/NASA. Si la elevación del Sol cae por debajo, el Sol queda oculto tras el relieve.</dd>
+      <dt>Ocultación</dt><dd>Fracción del disco solar tapada por la Luna (0–100%). 100% = totalidad.</dd>
+      <dt>Score</dt><dd>Índice sintético de observabilidad (0–100) que combina nubes, masa de aire, aerosoles y relieve. Verde=bueno, rojo=malo. 0 si el Sol está tras el relieve.</dd>
+      <dt>Nubes (opac.)</dt><dd>Opacidad de la columna de nubes (%), integrando capas baja/media/alta del modelo meteorológico. La tabla desglosa por altura: A=alta, M=media, B=baja, con el nº de nube y la altura en km.</dd>
+      <dt>Masa de aire (AM)</dt><dd>Espesor relativo de atmósfera atravesada respecto al cénit (AM=1). Crece muy rápido cerca del horizonte (AM≈11 a 4°, ≈38 a 0°). A mayor AM, más atenuación y enrojecimiento del Sol.</dd>
+      <dt>Visibilidad (vis)</dt><dd>Distancia horizontal de visión del modelo, en km. Valores bajos indican bruma o aerosol denso.</dd>
+      <dt>AOD</dt><dd>Profundidad óptica de aerosoles (Copernicus CAMS), adimensional. Mide turbidez atmosférica: cuanto más alto, más atenúa y enrojece la luz solar (típico 0.05 limpio, &gt;0.3 turbio).</dd>
+      <dt>Polvo (dust)</dt><dd>Concentración de polvo en suspensión (CAMS). Relevante en episodios de calima que reducen contraste y brillo.</dd>
+    </dl>
+    <button class="sec modal-close" onclick="closeVarInfo()">Cerrar</button>
+  </div>
+</div>
+<script>
+function openVarInfo(){document.getElementById('varinfo').hidden=false;}
+function closeVarInfo(){document.getElementById('varinfo').hidden=true;}
+// cerrar al tocar el fondo (fuera del recuadro) — clave en iOS donde no hay hover ni Esc fiable
+document.getElementById('varinfo').addEventListener('click',e=>{
+  if(e.target.id==='varinfo') closeVarInfo();
+});
+// cerrar con Escape en escritorio
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape' && !document.getElementById('varinfo').hidden) closeVarInfo();
+});
 </script>
 </body>
 </html>
