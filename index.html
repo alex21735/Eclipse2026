@@ -59,7 +59,9 @@
   .modal .tip-lead{font-family:var(--mono);font-size:.9rem;color:var(--acc2);margin:0 0 10px;
     padding:8px 10px;background:var(--panel2);border-radius:8px;border:1px solid var(--line)}
   td.tipcell{cursor:help}
-  @media (hover:none){ td.tipcell{cursor:pointer} td.tipcell .num{text-decoration:underline dotted rgba(139,151,181,.5);text-underline-offset:2px} }
+  th.hcell{cursor:help}
+  @media (hover:none){ td.tipcell{cursor:pointer} td.tipcell .num{text-decoration:underline dotted rgba(139,151,181,.5);text-underline-offset:2px}
+    th.hcell{cursor:pointer;text-decoration:underline dotted rgba(139,151,181,.45);text-underline-offset:3px} }
 
   button{background:var(--acc);color:#1a1200;border:none;border-radius:9px;
     padding:11px 20px;font-size:.95rem;font-weight:680;cursor:pointer}
@@ -367,20 +369,8 @@ function buildHorizonPlot(rows,profile,azMin,azMax){
       lastCx=cx;lastCy=cy;
       const col=scoreColor(r.score);
       const hm=`${String(r.hh).padStart(2,'0')}:${String(r.mm).padStart(2,'0')}${r.isMax?':'+String(r.ss).padStart(2,'0'):''}`;
-      const opacTxt = r.opac==null?'s/d':Math.round(r.opac)+'%';
-      const visTxt = r.vis==null?'s/d':(r.vis/1000).toFixed(0)+' km';
-      const aodTxt = r.aod==null?'s/d':r.aod.toFixed(2);
-      const amTxt = r.am==null?'s/d':r.am.toFixed(1);
-      const topoTxt = r.hz==null?'s/d':r.hz.toFixed(1)+'°';
-      const estado = r.below?'Sol TRAS EL RELIEVE':(r.totality?'TOTALIDAD':(r.sp.elev<4?'muy bajo':'visible'));
-      const tip=`${hm}${r.isMax?'  ★ máximo':''}\n`
-        +`Azimut ${r.sp.az.toFixed(1)}°  ·  Elevación ${r.sp.elev.toFixed(1)}°\n`
-        +`Ocultación lunar: ${Math.round(r.ob)}%\n`
-        +`Score visibilidad: ${r.score}/100\n`
-        +`Nubes (opac. columna): ${opacTxt}\n`
-        +`Masa de aire: ${amTxt}  ·  Visibilidad: ${visTxt}  ·  AOD: ${aodTxt}\n`
-        +`Horizonte relieve: ${topoTxt}\n`
-        +`Estado: ${estado}`;
+      const estado = r.below?'tras el relieve':(r.totality?'TOTALIDAD':(r.sp.elev<4?'Sol muy bajo':'visible'));
+      const tip=`${hm}${r.isMax?' ★ máximo':''} — ${Math.round(r.ob)}% ocult · ${estado}`;
       const R=rad(r);
       if(r.totality){
         s+=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="#141a2e" stroke="#f4b942" stroke-width="2.2"><title>${tip}</title></circle>`;
@@ -398,9 +388,7 @@ function buildHorizonPlot(rows,profile,azMin,azMax){
   s+=`</svg>`;
   return `<div class="sec-head" style="margin-top:22px">Horizonte: trayectoria solar vs relieve</div>`
     +`<div class="plotbox" id="plotbox">${s}</div>`
-    +`<div class="note" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">`
-    +`<span>Relleno = score · número = % ocultación · contorno dorado = totalidad · área marrón = relieve. Toca un círculo para ver sus datos.</span>`
-    +`<button class="infobtn" onclick="openVarInfo()">ⓘ ¿Qué es cada variable?</button></div>`;
+    +`<div class="note" style="margin-top:8px">Relleno = score · número = % ocultación · contorno dorado = totalidad · área marrón = relieve. En la tabla, toca una <b>cabecera</b> para saber qué es cada variable, o un <b>dato</b> para su interpretación.</div>`;
 }
 function phaseIcon(kind){
   // mini SVG 26x26: sol (dorado) + luna (oscura) con solapamiento según fase
@@ -448,7 +436,6 @@ function buildLinks(lat,lon,alt,SUM,rMax){
     ]},
   ];
   let h=`<div class="sec-head">Enlaces útiles</div>`;
-  h+=`<div class="note" style="margin:0 0 10px">Generados con tus coordenadas (${la4}, ${lo4}). Se abren en pestaña nueva.</div>`;
   for(const g of groups){
     h+=`<div class="colhead" style="font-size:.8rem;margin:14px 0 6px">${g.head}</div>`;
     h+=`<div class="links">`+g.items.map(it=>
@@ -460,14 +447,34 @@ function buildLinks(lat,lon,alt,SUM,rMax){
 }
 function eclipseSummary(E,lat,lonE,hM){
   if(!E)return null;
+  const mag=hh=>eclipseMag(E,hh,lat,lonE,hM).mag;
+  // 1) barrido grueso a 1 min para localizar el máximo y los contactos aproximados
   let best={mag:-1,h:0}, c1=null,c4=null,tot0=null,tot1=null;
   for(let hh=E.win[0];hh<=E.win[1];hh+=1/60){
-    const r=eclipseMag(E,hh,lat,lonE,hM);
-    if(r.mag>0&&c1==null)c1=hh;
-    if(r.mag>0)c4=hh;
-    if(E.type==='T'&&r.mag>=1){if(tot0==null)tot0=hh;tot1=hh;}
-    if(r.mag>best.mag)best={mag:r.mag,h:hh};
+    const m=mag(hh);
+    if(m>0&&c1==null)c1=hh;
+    if(m>0)c4=hh;
+    if(E.type==='T'&&m>=1){if(tot0==null)tot0=hh;tot1=hh;}
+    if(m>best.mag)best={mag:m,h:hh};
   }
+  // 2) refinado del máximo a resolución de 1 s (±90 s en torno al grueso)
+  if(best.h){
+    const step=1/3600, lo=best.h-90/3600, hi=best.h+90/3600;
+    for(let hh=lo;hh<=hi;hh+=step){const m=mag(hh);if(m>best.mag)best={mag:m,h:hh};}
+  }
+  // 3) refinado de cada contacto por bisección al segundo (cruce del umbral thr)
+  const refineCross=(t,thr,rising)=>{ // t = minuto donde ya se cruzó; buscamos el segundo exacto
+    if(t==null)return t;
+    let a=t-1/60, b=t; // el cruce ocurrió en el minuto previo→t
+    for(let i=0;i<12;i++){const mid=(a+b)/2; const over=mag(mid)>=thr; if(over===rising) b=mid; else a=mid;}
+    return (a+b)/2;
+  };
+  c1  = refineCross(c1,  1e-6, true);   // primer instante con mag>0
+  tot0= refineCross(tot0,1,    true);   // entra en totalidad
+  // para los finales el cruce es descendente: refinamos hacia el instante en que deja de cumplirse
+  const refineEnd=(t,thr)=>{ if(t==null)return t; let a=t,b=t+1/60; for(let i=0;i<12;i++){const mid=(a+b)/2; if(mag(mid)>=thr) a=mid; else b=mid;} return (a+b)/2; };
+  tot1= refineEnd(tot1,1);
+  c4  = refineEnd(c4,1e-6);
   const f=hh=>{const m=Math.round((hh%1)*60);let H=Math.floor(hh);let M=m;if(M===60){H++;M=0;}return `${String(H).padStart(2,'0')}:${String(M).padStart(2,'0')}`;};
   return {c1,c4,tot0,tot1,peak:best,fmt:f};
 }
@@ -697,14 +704,12 @@ async function run(){
     if(altRaw===''){st.textContent='Obteniendo altitud del terreno…';alt=await fElev(lat,lon);if(alt==null)alt=0;altAuto=true;document.getElementById('alt').value=Math.round(alt);}
     else alt=+altRaw;
 
-    st.textContent='Localidad, meteo y estado del modelo…';
-    const [town,visD,airD,modUpd]=await Promise.all([
+    st.textContent='Localidad, meteo…';
+    const [town,visD,airD]=await Promise.all([
       nearestTown(lat,lon),
       jsafe('visibilidad',()=>fVis(lat,lon,fecha)),
-      jsafe('aerosoles CAMS',()=>fAir(lat,lon,fecha)),
-      modelUpdated()
+      jsafe('aerosoles CAMS',()=>fAir(lat,lon,fecha))
     ]);
-    const modelTime = modUpd? modUpd.toISOString().slice(0,16).replace('T',' ')+' UTC' : null;
     let cache_seed=null;
 
     // ---- Sondeo de cobertura: una sola llamada antes del bucle completo ----
@@ -798,7 +803,6 @@ async function run(){
     let html=`<div class="card"><div class="colhead">${E.label} · ${model}</div>`;
     html+=`<div class="meta"><span><b>Lugar:</b> ${town||'—'} (${lat.toFixed(4)}, ${lon.toFixed(4)})</span>`
       +`<span><b>Altitud:</b> ${Math.round(alt)} m${altAuto?' (auto)':''}</span>`
-      +`<span><b>Última actualización modelo:</b> ${modelTime||'no disponible'}</span>`
       +`<span><b>Fuente nubes:</b> Open-Meteo/${model}</span></div>`;
     if(WARN.length){
       html+=`<div class="expl" style="border-left-color:#e05252"><b>Avisos de datos (${WARN.length}):</b> `
@@ -863,19 +867,26 @@ async function run(){
     html+=`<tr><th></th><th colspan="3" class="grp">SOL</th><th colspan="2" class="grp sep">LUNA</th>`
       +`<th colspan="7" class="grp sep">NUBES EN LÍNEA DE VISIÓN</th><th class="grp sep">·</th>`
       +`<th colspan="4" class="grp sep">ATMÓSFERA</th><th class="grp sep">·</th></tr>`;
-    html+=`<tr><th class="stickyc" title="Hora local (CEST). La fila con ★ es el instante de máxima ocultación.">Hora</th>`
-      +`<th title="Azimut del Sol: dirección en el horizonte (0°=N, 90°=E, 180°=S, 270°=O).">Az°</th>`
-      +`<th title="Elevación del Sol sobre el horizonte, en grados. Por debajo de ~4° la observación es difícil.">Elev°</th>`
-      +`<th title="Ángulo del horizonte topográfico (relieve) en la dirección del Sol. Si supera la elevación solar, el Sol está oculto tras montañas.">Topo°</th>`
-      +`<th class="sep" title="Porcentaje del disco solar cubierto por la Luna en ese instante.">Obsc%</th>`
-      +`<th title="Dibujo del solapamiento Sol–Luna con el ángulo real. En la totalidad, solo contorno.">Vista</th>`;
-    for(const S of SAMPLES) html+=`<th class="${S.name==='A12'?'sep':''}" title="Nubosidad (%) a ${S.h} km de altura, en el punto del cielo por el que pasa la luz del Sol hacia ti (no sobre tu cabeza).">${S.name}<br><span class="band">${S.h}km</span></th>`;
-    html+=`<th class="sep" title="Opacidad de la columna de nubes combinada: probabilidad de que las nubes tapen el Sol (0=despejado, 100=cubierto).">Opac</th>`
-      +`<th class="sep" title="Masa de aire: cuánto atmósfera atraviesa la luz. 1=cenit; crece mucho cerca del horizonte.">AM</th>`
-      +`<th title="Visibilidad horizontal estimada, en km.">Vis<br><span class="band">km</span></th>`
-      +`<th title="Profundidad óptica de aerosoles (bruma/partículas). Mayor = atmósfera más turbia.">AOD</th>`
-      +`<th title="Concentración de polvo en suspensión (calima).">Polvo</th>`
-      +`<th class="sep" title="Puntuación 0–100 de visibilidad del disco solar combinando nubes, aerosoles y relieve. No mide la ocultación, sino si el Sol se verá.">Score</th></tr></thead><tbody>`;
+    // definiciones de cada variable (se muestran al tocar/hover la cabecera)
+    const escH=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const H=(txt,def,cls)=>`<th class="hcell${cls?' '+cls:''}" title="${escH(def)}" data-def="${escH(def)}">${txt}</th>`;
+    html+=`<tr><th class="stickyc" title="Hora local (CEST). La fila con ★ es el instante de máxima ocultación." data-def="Hora local (CEST). La fila con ★ es el máximo de ocultación.">Hora</th>`
+      +H('Az°','Azimut del Sol: dirección en el horizonte (0°=N, 90°=E, 180°=S, 270°=O). Indica hacia dónde mirar.')
+      +H('Elev°','Elevación del Sol sobre el horizonte astronómico, en grados. Por debajo de ~4° la observación es muy difícil.')
+      +H('Topo°','Ángulo del relieve (montañas) en la dirección del Sol, de datos SRTM. Si supera la elevación solar, el Sol queda oculto tras el terreno.')
+      +H('Obsc%','Porcentaje del disco solar cubierto por la Luna en ese instante. 100% = totalidad.','sep')
+      +H('Vista','Dibujo del solapamiento Sol–Luna con el ángulo de posición real. En la totalidad, solo contorno.');
+    for(const S of SAMPLES){
+      const capaN = S.h>=6?'nubes altas (cirros, hielo)':(S.h>=2?'nubes medias':'nubes bajas (estratos/cúmulos)');
+      html+=H(`${S.name}<br><span class="band">${S.h}km</span>`,`Nubosidad (%) a ${S.h} km de altura — ${capaN} — en el punto del cielo por el que pasa la luz del Sol hacia ti, no sobre tu cabeza. El número pequeño es la distancia en línea de visión hasta esa nube.`,S.name==='A12'?'sep':'');
+    }
+    html+=H('Opac','Opacidad de la columna de nubes combinada en la línea de visión: probabilidad efectiva de que las nubes tapen el Sol (0=despejado, 100=cubierto).','sep')
+      +H('AM','Masa de aire: cuánta atmósfera atraviesa la luz respecto al cénit (AM=1). Crece muy rápido cerca del horizonte (≈11 a 4°, ≈38 a 0°) y atenúa y enrojece el disco.','sep')
+      +H('Vis<br><span class="band">km</span>','Visibilidad horizontal estimada en superficie, en km. Valores bajos indican bruma o aerosol denso.')
+      +H('AOD','Profundidad óptica de aerosoles (bruma/partículas en toda la columna). Mayor = atmósfera más turbia, más atenuación y enrojecimiento.')
+      +H('Polvo','Concentración de polvo en suspensión (calima), de Copernicus CAMS.')
+      +H('Score','Puntuación 0–100 de si el Sol se verá, combinando nubes, aerosoles y relieve. No mide la ocultación lunar, sino la visibilidad del disco.','sep')
+      +`</tr></thead><tbody>`;
 
     // esc: escapa comillas para meter la frase larga en atributos HTML
     const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -896,62 +907,69 @@ async function run(){
     // ---- Interpretación en lenguaje natural por celda (tooltip escritorio + modal móvil) ----
     // Devuelve {t, m} : t = frase corta para hover/title, m = frase larga para el modal táctil.
     const capa=h=> h>=6?'cirros/nubes altas':(h>=2?'nubes medias':'nubes bajas');
-    // efecto de cada tipo de nube sobre la luz solar directa
+    // efecto de cada tipo de nube sobre la luz solar directa, con su consecuencia concreta
     const efectoNube=(h,op)=>{
       if(op===0) return '';
-      const tipo = h>=6?'altas (cirros, hielo)':(h>=2?'medias (altostratos)':'bajas (estratos/cúmulos)');
-      if(h>=6){ // altas: finas, translúcidas salvo si son densas
-        return op<40 ? ` Nubes ${tipo}: finas y translúcidas, atenúan y difuminan el disco pero suele verse a través.`
-                     : ` Nubes ${tipo} densas: velan el Sol y pueden impedir ver corona y contactos.`;
+      if(h>=6){ // altas (hielo): cirros/cirrostratos
+        return op<25 ? ` Cirros finos de hielo: translúcidos, el disco se ve a través con un ligero halo; no impiden la observación.`
+             : op<60 ? ` Cirrostratos: velo lechoso que resta nitidez y atenúa la corona, pero el disco sigue visible.`
+                     : ` Capa alta densa: puede difuminar u ocultar el disco y borrar las serpentinas tenues de la corona.`;
       }
-      if(h>=2){ // medias
-        return op<40 ? ` Nubes ${tipo}: atenúan el disco de forma apreciable.`
-                     : ` Nubes ${tipo} compactas: probablemente tapen el Sol.`;
+      if(h>=2){ // medias: altostratos/altocúmulos
+        return op<30 ? ` Altocúmulos dispersos: pueden cruzar el disco de forma intermitente.`
+             : op<65 ? ` Altostratos: capa gris que atenúa bastante y puede tapar el Sol a ratos.`
+                     : ` Altostratos compactos: probable que oculten el Sol durante el evento.`;
       }
-      // bajas: las más opacas, las que arruinan una observación a baja altura
-      return op<30 ? ` Nubes ${tipo}: jirones que pueden cruzar el disco.`
-                   : ` Nubes ${tipo}: opacas, bloquean por completo la luz solar directa. Críticas con el Sol bajo, porque se acumulan en el horizonte.`;
+      // bajas: estratos/cúmulos, las decisivas cerca del horizonte
+      return op<25 ? ` Cúmulos/estratos bajos sueltos: jirones que pueden cruzar el disco puntualmente.`
+           : op<60 ? ` Estratocúmulos: banco bajo que taparía el Sol si se interpone; crítico con el Sol tan bajo.`
+                   : ` Estratos bajos opacos: bloquean por completo la luz directa. A esta altura se acumulan en el horizonte y son la causa más común de perder la observación.`;
     };
     const interpCloud=(x,S)=>{
       if(!x||x.st==='h') return {t:`${S.name} (${S.h} km)`, m:`Sol bajo el horizonte: sin dato a ${S.h} km.`};
-      if(x.st==='f') return {t:`${S.name}: fuera de alcance`, m:`A ${S.h} km, la línea de visión sale de la atmósfera útil: esa capa no intercepta la luz ahora.`};
+      if(x.st==='f') return {t:`${S.name}: fuera de alcance`, m:`Con el Sol tan bajo, la línea de visión a ${S.h} km recorre tanta distancia que sale de la atmósfera útil: esa capa no intercepta la luz ahora.`};
       if(x.c==null) return {t:`${S.name}: sin dato`, m:`El modelo no da nubosidad a ${S.h} km aquí.`};
       const op=Math.round(x.c), km=Math.round(x.d);
       const nivel = op===0?'despejado':(op<15?'casi despejado':(op<40?'nubosidad ligera':(op<70?'nubosidad moderada':'muy nuboso')));
       const frase = op===0
-        ? `Sin ${capa(S.h)} en la dirección del Sol a ${S.h} km de altura (a unos ${km} km de distancia en línea de visión).`
-        : `${capa(S.h).replace(/^./,c=>c.toUpperCase())} a ${S.h} km de altura, que en la dirección del Sol están a unos ${km} km de distancia, con una opacidad del ${op}% (${nivel}).`;
+        ? `Despejado de ${capa(S.h)} a ${S.h} km de altura, en el punto de cielo a unos ${km} km de ti por el que pasa la luz del Sol.`
+        : `${capa(S.h).replace(/^./,c=>c.toUpperCase())} a ${S.h} km de altura, en el punto de cielo a unos ${km} km de ti por el que pasa la luz del Sol, con opacidad del ${op}% (${nivel}).`;
       return {t:`${S.name}: ${op}% opac · ${km} km · ${nivel}`, m:frase+efectoNube(S.h,op)};
     };
     const interpVar=(key,v)=>{
       if(v==null||isNaN(v)) return {t:'sin dato', m:'El modelo no da este valor aquí.'};
       switch(key){
-        case 'topo':{return {t:`Relieve a ${v.toFixed(1)}°`, m:`El relieve se eleva ${v.toFixed(1)}° aquí. Si el Sol baja de este ángulo queda oculto tras las montañas, y con el Sol tan bajo puedes perder la totalidad aunque el cielo esté despejado.`};}
+        case 'topo':{return {t:`Relieve a ${v.toFixed(1)}°`, m:`El terreno se eleva ${v.toFixed(1)}° en esa dirección. El Sol debe estar por encima de ${v.toFixed(1)}° para ser visible; por debajo, oculto tras la montaña.`};}
         case 'obsc':{const n=v<1?'sin eclipse aún':(v<50?'parcial inicial':(v<99?'parcial avanzada':(v>=100?'totalidad':'casi total')));
-          const ef = v>=100?' El disco queda tapado: es el único momento seguro sin filtro, y cuando se ven corona y protuberancias.':(v>=99?' Faltan segundos para la totalidad: atento a las perlas de Baily y el anillo de diamante.':(v>=50?' Ya se nota la caída de luz y el descenso de temperatura.':' Con filtro se ve el mordisco de la Luna; a simple vista aún no cambia el ambiente.'));
-          return {t:`Ocultación ${Math.round(v)}%`, m:`${Math.round(v)}% del Sol tapado (${n}).${ef}`};}
-        case 'opac':{const n=v<15?'despejado':(v<40?'nubosidad ligera':(v<70?'nubosidad moderada':'cielo tapado'));
-          const ef = v>=70?' Muy probable que las nubes tapen el Sol.':(v>=40?' Riesgo real de que las nubes interfieran.':(v>=15?' Alguna nube puede cruzar el disco.':' Cielo prácticamente despejado en la línea de visión.'));
-          return {t:`Opacidad ${Math.round(v)}%`, m:`${Math.round(v)}% (${n}).${ef}`};}
-        case 'am':{const n=v<2?'Sol alto':(v<5?'moderada':(v<11?'Sol bajo':'Sol casi en el horizonte')); const mag=(0.35*v).toFixed(1);
-          const ef = v>=11?` Enrojece mucho el disco, como un ocaso; a ~15+ magnitudes de atenuación (Sol casi en el horizonte) llega a mirarse a simple vista, pero aún no es seguro con fotosfera visible.`:(v>=5?` El disco se ve rojizo y más tenue.`:` Poca atenuación: filtro imprescindible.`);
-          return {t:`Masa de aire ${v.toFixed(1)}×`, m:`${v.toFixed(1)}× la del cénit (${n}): resta ~${mag} magnitudes de brillo.${ef}`};}
+          const luz=v>=100?0:Math.max(0,Math.round((1-v/100)*100)); // % de fotosfera aún visible
+          const ef = v>=100?' Fotosfera 100% tapada: único momento seguro sin filtro; se ven corona, cromosfera y protuberancias.':(v>=99?' Solo asoma un hilo de fotosfera: perlas de Baily y anillo de diamante inminentes.':(v>=50?` Queda ~${luz}% del disco: luz plomiza y baja de temperatura ya perceptibles.`:` Aún brilla el ${luz}% del disco: a simple vista casi no se nota, con filtro se ve el mordisco.`));
+          return {t:`Ocultación ${Math.round(v)}%`, m:`La Luna tapa el ${Math.round(v)}% del Sol (${n}).${ef}`};}
+        case 'opac':{const paso=Math.max(0,Math.round(100-v)); const n=v<15?'despejado':(v<40?'nubosidad ligera':(v<70?'nubosidad moderada':'cielo tapado'));
+          const ef = ` Deja pasar ~${paso}% de la luz directa.`+(v>=70?' El Sol quedaría muy velado o tapado.':(v>=40?' Riesgo real de que las nubes crucen el disco.':''));
+          return {t:`Opacidad ${Math.round(v)}%`, m:`${Math.round(v)}% de opacidad en la columna (${n}).${ef}`};}
+        case 'am':{const n=v<2?'Sol alto':(v<5?'moderada':(v<11?'Sol bajo':'Sol casi en el horizonte'));
+          const dm=0.35*v; const factor=Math.pow(10,dm/2.5); // veces menos flujo que en el cénit
+          const fTxt = factor>=10?`~${Math.round(factor)}×`:`~${factor.toFixed(1)}×`;
+          const ef = v>=11?` Un ocaso solo se mira a simple vista cerca de ~30–40× (Sol casi tocando el horizonte); aquí aún hay que usar filtro con fotosfera visible.`:(v>=5?` Disco visiblemente rojizo y más débil.`:``);
+          return {t:`Masa de aire ${v.toFixed(1)}×`, m:`La luz cruza ${v.toFixed(1)}× la atmósfera del cénit: ${dm.toFixed(1)} magnitudes menos de brillo, ${fTxt} menos flujo.${ef}`};}
         case 'vis':{const n=v>30?'excelente':(v>15?'buena':(v>8?'reducida, bruma':'mala, calima densa'));
-          const ef = v<=8?' Bruma o calima que resta contraste y nitidez al disco.':'';
-          return {t:`Visibilidad ${Math.round(v)} km`, m:`${Math.round(v)} km (${n}).${ef}`};}
+          const ef = v<=8?' La bruma resta contraste al disco y difumina el limbo.':(v>30?' Aire muy transparente.':'');
+          return {t:`Visibilidad ${Math.round(v)} km`, m:`Se ve hasta ~${Math.round(v)} km (${n}).${ef}`};}
         case 'aod':{const n=v<0.1?'aire limpio':(v<0.2?'ligera turbidez':(v<0.35?'turbidez apreciable':'muy turbio, calima'));
-          const ef = v>=0.2?' Los aerosoles atenúan y enrojecen la luz, y comen las serpentinas tenues de la corona.':' Apenas afecta al brillo del disco.';
-          return {t:`AOD ${v.toFixed(2)}`, m:`${v.toFixed(2)} (${n}).${ef}`};}
+          const trans=Math.round(Math.exp(-v)*100); // % transmitido a masa de aire 1
+          const ef = v>=0.2?' Enrojece la luz y difumina las serpentinas tenues de la corona.':' Efecto casi nulo sobre el disco.';
+          return {t:`AOD ${v.toFixed(2)}`, m:`Aerosoles ${v.toFixed(2)} (${n}): transmiten ~${trans}% en vertical, menos con el Sol bajo.${ef}`};}
         case 'dust':{const n=v<10?'insignificante':(v<50?'calima leve':(v<150?'calima moderada':'calima intensa'));
-          const ef = v>=50?' El polvo en suspensión rebaja contraste y puede dar un cielo lechoso.':'';
-          return {t:`Polvo ${Math.round(v)}`, m:`${Math.round(v)} µg/m³ (${n}).${ef}`};}
-        case 'score':{const n=v>=35?'buena':(v>=20?'aceptable':(v>0?'pobre':'nula: Sol tras relieve'));
-          const ef = v<=0?' El relieve tapa el Sol en este instante.':(v<20?' Combinación desfavorable de nubes, aerosoles o Sol muy bajo.':'');
-          return {t:`Score ${v}/100`, m:`${v}/100 (${n}).${ef}`};}
-        case 'elev':{const n=v<0?'bajo el horizonte':(v<4?'muy bajo, difícil':(v<15?'bajo':'alto'));
-          const ef = v<4&&v>=0?' Tan bajo que cualquier obstáculo o bruma en el horizonte lo tapa.':'';
-          return {t:`Elevación ${v.toFixed(1)}°`, m:`${v.toFixed(1)}° sobre el horizonte (${n}).${ef}`};}
-        case 'az':{const dir=v<45?'N':(v<135?'E':(v<225?'S':(v<315?'O':'N'))); return {t:`Azimut ${v.toFixed(1)}°`, m:`Rumbo ${v.toFixed(1)}°, hacia el ${dir}. Es la dirección del horizonte donde estará el Sol.`};}
+          const ef = v>=50?' Cielo lechoso y menos contraste hacia el horizonte.':'';
+          return {t:`Polvo ${Math.round(v)}`, m:`${Math.round(v)} µg/m³ de polvo (${n}).${ef}`};}
+        case 'score':{const n=v>=35?'buena':(v>=20?'aceptable':(v>0?'pobre':'Sol tras el relieve'));
+          const ef = v<=0?' El relieve tapa el Sol en este instante: no se ve.':(v<20?' Lastrado por nubes, aerosoles o Sol muy bajo.':(v>=35?' Buenas condiciones para ver el disco.':''));
+          return {t:`Score ${v}/100`, m:`${v}/100 de visibilidad del disco (${n}).${ef}`};}
+        case 'elev':{const n=v<0?'bajo el horizonte':(v<4?'muy bajo':(v<15?'bajo':'alto'));
+          const dist=v>=0.5?Math.round(50/Math.tan(v*Math.PI/180)):null; // a qué distancia una colina de 50 m taparía
+          const ef = (v<4&&v>=0.5)?` Tan bajo que una loma de 50 m a ${dist>1000?(dist/1000).toFixed(1)+' km':dist+' m'} ya lo taparía.`:'';
+          return {t:`Elevación ${v.toFixed(1)}°`, m:`Sol a ${v.toFixed(1)}° sobre el horizonte (${n}).${ef}`};}
+        case 'az':{const dir=v<45?'N':(v<135?'E':(v<225?'S':(v<315?'O':'N'))); return {t:`Azimut ${v.toFixed(1)}°`, m:`El Sol está en rumbo ${v.toFixed(1)}° (${dir}): esa es la parte del horizonte a vigilar.`};}
       }
       return {t:'', m:''};
     };
@@ -1057,29 +1075,15 @@ onEclipseChange();
 </script>
 <div class="modal-back" id="varinfo" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="varinfo-title">
-    <h3 id="varinfo-title">Variables del gráfico y la tabla</h3>
-    <div class="modal-sub">Índice de observabilidad orientativo.</div>
-    <p class="tip-lead" id="tip-lead" hidden></p>
-    <dl>
-      <dt>Azimut</dt><dd>Rumbo del Sol en grados (0°=N, 90°=E, 180°=S, 270°=O). Indica hacia dónde mirar en el horizonte.</dd>
-      <dt>Elevación</dt><dd>Altura angular del Sol sobre el horizonte astronómico (0°=horizonte, 90°=cénit).</dd>
-      <dt>Horizonte relieve (topo)</dt><dd>Altura angular del perfil del terreno (montañas) en ese azimut, de SRTM/NASA. Si la elevación del Sol cae por debajo, el Sol queda oculto tras el relieve.</dd>
-      <dt>Ocultación</dt><dd>Fracción del disco solar tapada por la Luna (0–100%). 100% = totalidad.</dd>
-      <dt>Score</dt><dd>Índice sintético de observabilidad (0–100) que combina nubes, masa de aire, aerosoles y relieve. Verde=bueno, rojo=malo. 0 si el Sol está tras el relieve.</dd>
-      <dt>Nubes (opac.)</dt><dd>Opacidad de la columna de nubes (%), integrando capas baja/media/alta del modelo meteorológico. La tabla desglosa por altura: A=alta, M=media, B=baja, con el nº de nube y la altura en km.</dd>
-      <dt>Masa de aire (AM)</dt><dd>Espesor relativo de atmósfera atravesada respecto al cénit (AM=1). Crece muy rápido cerca del horizonte (AM≈11 a 4°, ≈38 a 0°). A mayor AM, más atenuación y enrojecimiento del Sol.</dd>
-      <dt>Visibilidad (vis)</dt><dd>Distancia horizontal de visión del modelo, en km. Valores bajos indican bruma o aerosol denso.</dd>
-      <dt>AOD</dt><dd>Profundidad óptica de aerosoles (Copernicus CAMS), adimensional. Mide turbidez atmosférica: cuanto más alto, más atenúa y enrojece la luz solar (típico 0.05 limpio, &gt;0.3 turbio).</dd>
-      <dt>Polvo (dust)</dt><dd>Concentración de polvo en suspensión (CAMS). Relevante en episodios de calima que reducen contraste y brillo.</dd>
-    </dl>
+    <h3 id="varinfo-title">Detalle</h3>
+    <p class="tip-lead" id="tip-lead"></p>
     <button class="sec modal-close" onclick="closeVarInfo()">Cerrar</button>
   </div>
 </div>
 <script>
-function openVarInfo(leadText){
-  const lead=document.getElementById('tip-lead');
-  if(leadText){ lead.textContent=leadText; lead.hidden=false; }
-  else { lead.hidden=true; lead.textContent=''; }
+function openVarInfo(leadText,titleText){
+  document.getElementById('varinfo-title').textContent=titleText||'Detalle';
+  document.getElementById('tip-lead').textContent=leadText||'';
   document.getElementById('varinfo').hidden=false;
 }
 function closeVarInfo(){document.getElementById('varinfo').hidden=true;}
@@ -1091,10 +1095,13 @@ document.getElementById('varinfo').addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape' && !document.getElementById('varinfo').hidden) closeVarInfo();
 });
-// táctil: tocar una celda con interpretación abre el modal con su frase (delegado, sobrevive a re-render)
+// táctil: tocar una CABECERA muestra qué es la variable; tocar una CELDA muestra la interpretación del dato
 document.addEventListener('click',e=>{
-  const td=e.target.closest && e.target.closest('td.tipcell');
-  if(td && td.dataset.m){ openVarInfo(td.dataset.m); }
+  if(!e.target.closest) return;
+  const th=e.target.closest('th.hcell');
+  if(th && th.dataset.def){ const label=(th.textContent||'').replace(/\s+/g,' ').trim(); openVarInfo(th.dataset.def, label||'Variable'); return; }
+  const td=e.target.closest('td.tipcell');
+  if(td && td.dataset.m){ openVarInfo(td.dataset.m,'Detalle'); }
 });
 </script>
 </body>
