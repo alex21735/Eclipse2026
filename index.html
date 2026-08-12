@@ -157,7 +157,7 @@
 <body>
 <div class="wrap">
   <h1>Observabilidad de eclipses</h1>
-  <div class="sub">Eclipses ibéricos 2026 · 2027 · 2028</div>
+  <div class="sub">Eclipses ibéricos 2026 · 2027 · 2028 <span style="opacity:.5;font-size:.85em">· v5 (seg)</span></div>
 
   <div class="card">
     <div class="searchrow">
@@ -457,9 +457,9 @@ function eclipseSummary(E,lat,lonE,hM){
     if(E.type==='T'&&m>=1){if(tot0==null)tot0=hh;tot1=hh;}
     if(m>best.mag)best={mag:m,h:hh};
   }
-  // 2) refinado del máximo a resolución de 1 s (±90 s en torno al grueso)
+  // 2) refinado del máximo a resolución sub-segundo (±120 s en torno al grueso)
   if(best.h){
-    const step=1/3600, lo=best.h-90/3600, hi=best.h+90/3600;
+    const step=0.5/3600, lo=best.h-120/3600, hi=best.h+120/3600;
     for(let hh=lo;hh<=hi;hh+=step){const m=mag(hh);if(m>best.mag)best={mag:m,h:hh};}
   }
   // 3) refinado de cada contacto por bisección al segundo (cruce del umbral thr)
@@ -566,16 +566,6 @@ const fPt=(lat,lon,model,fecha)=>jget(`https://api.open-meteo.com/v1/forecast?la
 const fVis=(lat,lon,fecha)=>jget(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=visibility&timezone=UTC&start_date=${fecha}&end_date=${fecha}&models=best_match`);
 const fAir=(lat,lon,fecha)=>jget(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=aerosol_optical_depth,dust&timezone=UTC&start_date=${fecha}&end_date=${fecha}`);
 async function fElev(lat,lon){try{const d=await jget(`https://api.open-meteo.com/v1/elevation?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}`);return d.elevation&&d.elevation[0]!=null?d.elevation[0]:null;}catch(e){console.warn('[datos] elevación: '+e.message);return null;}}
-// última actualización del modelo (endpoint de estado); devuelve la más reciente disponible
-async function modelUpdated(){
-  try{
-    const d=await jget('https://api.open-meteo.com/data/status.json');
-    // status.json lista modelos con last_run_modification_time (unix). Tomamos el máximo.
-    let mx=0;
-    const walk=o=>{if(o&&typeof o==='object'){for(const k in o){if(k==='last_run_modification_time'&&typeof o[k]==='number')mx=Math.max(mx,o[k]);else walk(o[k]);}}};
-    walk(d); return mx>0?new Date(mx*1000):null;
-  }catch(e){console.warn('[datos] estado modelo: '+e.message);return null;}
-}
 async function nearestTown(lat,lon){
   try{const d=await jget(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=es`);
     return d.locality||d.city||d.principalSubdivision||null;}catch(e){console.warn('[datos] localidad: '+e.message);return null;}
