@@ -391,24 +391,51 @@ function buildHorizonPlot(rows,profile,azMin,azMax){
     +`<div class="note" style="margin-top:8px">Relleno = score · número = % ocultación · contorno dorado = totalidad · área marrón = relieve. En la tabla, toca una <b>cabecera</b> para saber qué es cada variable, o un <b>dato</b> para su interpretación.</div>`;
 }
 function phaseIcon(kind){
-  // mini SVG 26x26: sol (dorado) + luna (oscura) con solapamiento según fase
+  // mini SVG 26x26: Sol (dorado) + Luna (oscura) según fase
   const S=26,cx=13,cy=13,r=8;
   const sun=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#f4b942"/>`;
-  let moon='';
-  // offset de la luna: C1 entra por la derecha, máx/total centrada, C4 sale por la izquierda
-  const off={c1:7,c2:2,max:0,tot:0,c3:-2,c4:-7,set:0};
-  const dx=off[kind]!=null?off[kind]:0;
-  if(kind==='max'||kind==='tot'){ // cubierto (total) o casi
-    moon=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#1b2440"/>`
-      +(kind==='tot'?`<circle cx="${cx}" cy="${cy}" r="${r+1.5}" fill="none" stroke="#f4b942" stroke-width="1"/>`:'');
-  } else if(kind==='set'){ // puesta: sol medio bajo una línea de horizonte
-    moon=`<rect x="0" y="${cy+2}" width="${S}" height="${S-cy-2}" fill="#0a0e1a"/>`
-      +`<line x1="0" y1="${cy+2}" x2="${S}" y2="${cy+2}" stroke="#5a6787" stroke-width="1"/>`;
-    return `<svg width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">${sun}${moon}</svg>`;
-  } else {
-    moon=`<circle cx="${cx+dx}" cy="${cy}" r="${r}" fill="#1b2440" opacity="0.92"/>`;
+
+  // C1 / C4: primer/último contacto — la Luna apenas muerde un sector pequeño del borde.
+  // Luna muy desplazada (casi tangente) para que se note que solo roza el disco.
+  if(kind==='c1'||kind==='c4'){
+    const dir = kind==='c1'? 1 : -1;              // c1 muerde por la derecha, c4 por la izquierda
+    const mx = cx + dir*(r+r-3);                    // centro lunar casi fuera: solo entra un sector pequeño
+    const id = 'sun'+kind;
+    return `<svg width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">`
+      +`<defs><clipPath id="${id}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath></defs>`
+      +sun
+      +`<circle cx="${mx.toFixed(1)}" cy="${cy}" r="${r}" fill="#1b2440" clip-path="url(#${id})"/></svg>`;
   }
-  return `<svg width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">${sun}${moon}</svg>`;
+
+  // C2 / C3: entrada/salida de la totalidad — anillo de diamante.
+  // Luna casi centrada tapando el disco, con un destello brillante en el borde de contacto.
+  if(kind==='c2'||kind==='c3'){
+    const dir = kind==='c2'? -1 : 1;               // el diamante brilla en el lado que aún toca la fotosfera
+    const dgx = cx + dir*(r-1.2);                  // posición del destello sobre el limbo
+    return `<svg width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">`
+      +`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#1b2440"/>`                                  // disco tapado
+      +`<circle cx="${cx}" cy="${cy}" r="${r+1.4}" fill="none" stroke="#f4b942" stroke-width="1.1" opacity="0.85"/>` // corona/anillo
+      +`<circle cx="${dgx.toFixed(1)}" cy="${cy}" r="2.6" fill="#fff3c4"/>`                        // brillo del diamante
+      +`<circle cx="${dgx.toFixed(1)}" cy="${cy}" r="4.2" fill="#fff3c4" opacity="0.35"/></svg>`;  // halo del destello
+  }
+
+  // máximo / totalidad: disco totalmente cubierto (con contorno si es total)
+  if(kind==='max'||kind==='tot'){
+    const ring = kind==='tot'?`<circle cx="${cx}" cy="${cy}" r="${r+1.5}" fill="none" stroke="#f4b942" stroke-width="1"/>`:'';
+    return `<svg width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">${sun}`
+      +`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#1b2440"/>${ring}</svg>`;
+  }
+
+  // puesta de sol (por si se usa): Sol medio bajo el horizonte
+  if(kind==='set'){
+    return `<svg width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">${sun}`
+      +`<rect x="0" y="${cy+2}" width="${S}" height="${S-cy-2}" fill="#0a0e1a"/>`
+      +`<line x1="0" y1="${cy+2}" x2="${S}" y2="${cy+2}" stroke="#5a6787" stroke-width="1"/></svg>`;
+  }
+
+  // por defecto: parcial genérica
+  return `<svg width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">${sun}`
+    +`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#1b2440" opacity="0.92"/></svg>`;
 }
 function buildLinks(lat,lon,alt,SUM,rMax){
   const la=lat.toFixed(5), lo=lon.toFixed(5), la4=lat.toFixed(4), lo4=lon.toFixed(4);
