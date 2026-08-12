@@ -896,6 +896,22 @@ async function run(){
     // ---- Interpretación en lenguaje natural por celda (tooltip escritorio + modal móvil) ----
     // Devuelve {t, m} : t = frase corta para hover/title, m = frase larga para el modal táctil.
     const capa=h=> h>=6?'cirros/nubes altas':(h>=2?'nubes medias':'nubes bajas');
+    // efecto de cada tipo de nube sobre la luz solar directa
+    const efectoNube=(h,op)=>{
+      if(op===0) return '';
+      const tipo = h>=6?'altas (cirros, hielo)':(h>=2?'medias (altostratos)':'bajas (estratos/cúmulos)');
+      if(h>=6){ // altas: finas, translúcidas salvo si son densas
+        return op<40 ? ` Nubes ${tipo}: finas y translúcidas, atenúan y difuminan el disco pero suele verse a través.`
+                     : ` Nubes ${tipo} densas: velan el Sol y pueden impedir ver corona y contactos.`;
+      }
+      if(h>=2){ // medias
+        return op<40 ? ` Nubes ${tipo}: atenúan el disco de forma apreciable.`
+                     : ` Nubes ${tipo} compactas: probablemente tapen el Sol.`;
+      }
+      // bajas: las más opacas, las que arruinan una observación a baja altura
+      return op<30 ? ` Nubes ${tipo}: jirones que pueden cruzar el disco.`
+                   : ` Nubes ${tipo}: opacas, bloquean por completo la luz solar directa. Críticas con el Sol bajo, porque se acumulan en el horizonte.`;
+    };
     const interpCloud=(x,S)=>{
       if(!x||x.st==='h') return {t:`${S.name} (${S.h} km)`, m:`Sol bajo el horizonte: sin dato a ${S.h} km.`};
       if(x.st==='f') return {t:`${S.name}: fuera de alcance`, m:`A ${S.h} km, la línea de visión sale de la atmósfera útil: esa capa no intercepta la luz ahora.`};
@@ -905,21 +921,37 @@ async function run(){
       const frase = op===0
         ? `Sin ${capa(S.h)} en la dirección del Sol a ${S.h} km de altura (a unos ${km} km de distancia en línea de visión).`
         : `${capa(S.h).replace(/^./,c=>c.toUpperCase())} a ${S.h} km de altura, que en la dirección del Sol están a unos ${km} km de distancia, con una opacidad del ${op}% (${nivel}).`;
-      return {t:`${S.name}: ${op}% opac · ${km} km · ${nivel}`, m:frase};
+      return {t:`${S.name}: ${op}% opac · ${km} km · ${nivel}`, m:frase+efectoNube(S.h,op)};
     };
     const interpVar=(key,v)=>{
       if(v==null||isNaN(v)) return {t:'sin dato', m:'El modelo no da este valor aquí.'};
       switch(key){
-        case 'topo':{return {t:`Relieve a ${v.toFixed(1)}°`, m:`El relieve se eleva ${v.toFixed(1)}° aquí. Si el Sol baja de este ángulo, queda oculto tras las montañas.`};}
-        case 'obsc':{const n=v<1?'sin eclipse aún':(v<50?'parcial inicial':(v<99?'parcial avanzada':(v>=100?'totalidad':'casi total'))); return {t:`Ocultación ${Math.round(v)}%`, m:`${Math.round(v)}% del Sol tapado (${n}).`};}
-        case 'opac':{const n=v<15?'despejado':(v<40?'nubosidad ligera':(v<70?'nubosidad moderada':'cielo tapado')); return {t:`Opacidad ${Math.round(v)}%`, m:`${Math.round(v)}% (${n}).`};}
-        case 'am':{const n=v<2?'Sol alto':(v<5?'moderada':(v<11?'Sol bajo':'Sol casi en el horizonte')); const mag=(0.35*v).toFixed(1); return {t:`Masa de aire ${v.toFixed(1)}×`, m:`${v.toFixed(1)}× la del cénit (${n}): atenúa ~${mag} magnitudes y enrojece el disco.`};}
-        case 'vis':{const n=v>30?'excelente':(v>15?'buena':(v>8?'reducida, bruma':'mala, calima densa')); return {t:`Visibilidad ${Math.round(v)} km`, m:`${Math.round(v)} km (${n}).`};}
-        case 'aod':{const n=v<0.1?'aire limpio':(v<0.2?'ligera turbidez':(v<0.35?'turbidez apreciable':'muy turbio, calima')); return {t:`AOD ${v.toFixed(2)}`, m:`${v.toFixed(2)} (${n}).`};}
-        case 'dust':{const n=v<10?'insignificante':(v<50?'calima leve':(v<150?'calima moderada':'calima intensa')); return {t:`Polvo ${Math.round(v)}`, m:`${Math.round(v)} µg/m³ (${n}).`};}
-        case 'score':{const n=v>=35?'buena':(v>=20?'aceptable':(v>0?'pobre':'nula: Sol tras relieve')); return {t:`Score ${v}/100`, m:`${v}/100 (${n}).`};}
-        case 'elev':{const n=v<0?'bajo el horizonte':(v<4?'muy bajo, difícil':(v<15?'bajo':'alto')); return {t:`Elevación ${v.toFixed(1)}°`, m:`${v.toFixed(1)}° sobre el horizonte (${n}).`};}
-        case 'az':{const dir=v<45?'N':(v<135?'E':(v<225?'S':(v<315?'O':'N'))); return {t:`Azimut ${v.toFixed(1)}°`, m:`Rumbo ${v.toFixed(1)}°, hacia el ${dir}.`};}
+        case 'topo':{return {t:`Relieve a ${v.toFixed(1)}°`, m:`El relieve se eleva ${v.toFixed(1)}° aquí. Si el Sol baja de este ángulo queda oculto tras las montañas, y con el Sol tan bajo puedes perder la totalidad aunque el cielo esté despejado.`};}
+        case 'obsc':{const n=v<1?'sin eclipse aún':(v<50?'parcial inicial':(v<99?'parcial avanzada':(v>=100?'totalidad':'casi total')));
+          const ef = v>=100?' El disco queda tapado: es el único momento seguro sin filtro, y cuando se ven corona y protuberancias.':(v>=99?' Faltan segundos para la totalidad: atento a las perlas de Baily y el anillo de diamante.':(v>=50?' Ya se nota la caída de luz y el descenso de temperatura.':' Con filtro se ve el mordisco de la Luna; a simple vista aún no cambia el ambiente.'));
+          return {t:`Ocultación ${Math.round(v)}%`, m:`${Math.round(v)}% del Sol tapado (${n}).${ef}`};}
+        case 'opac':{const n=v<15?'despejado':(v<40?'nubosidad ligera':(v<70?'nubosidad moderada':'cielo tapado'));
+          const ef = v>=70?' Muy probable que las nubes tapen el Sol.':(v>=40?' Riesgo real de que las nubes interfieran.':(v>=15?' Alguna nube puede cruzar el disco.':' Cielo prácticamente despejado en la línea de visión.'));
+          return {t:`Opacidad ${Math.round(v)}%`, m:`${Math.round(v)}% (${n}).${ef}`};}
+        case 'am':{const n=v<2?'Sol alto':(v<5?'moderada':(v<11?'Sol bajo':'Sol casi en el horizonte')); const mag=(0.35*v).toFixed(1);
+          const ef = v>=11?` Enrojece mucho el disco, como un ocaso; a ~15+ magnitudes de atenuación (Sol casi en el horizonte) llega a mirarse a simple vista, pero aún no es seguro con fotosfera visible.`:(v>=5?` El disco se ve rojizo y más tenue.`:` Poca atenuación: filtro imprescindible.`);
+          return {t:`Masa de aire ${v.toFixed(1)}×`, m:`${v.toFixed(1)}× la del cénit (${n}): resta ~${mag} magnitudes de brillo.${ef}`};}
+        case 'vis':{const n=v>30?'excelente':(v>15?'buena':(v>8?'reducida, bruma':'mala, calima densa'));
+          const ef = v<=8?' Bruma o calima que resta contraste y nitidez al disco.':'';
+          return {t:`Visibilidad ${Math.round(v)} km`, m:`${Math.round(v)} km (${n}).${ef}`};}
+        case 'aod':{const n=v<0.1?'aire limpio':(v<0.2?'ligera turbidez':(v<0.35?'turbidez apreciable':'muy turbio, calima'));
+          const ef = v>=0.2?' Los aerosoles atenúan y enrojecen la luz, y comen las serpentinas tenues de la corona.':' Apenas afecta al brillo del disco.';
+          return {t:`AOD ${v.toFixed(2)}`, m:`${v.toFixed(2)} (${n}).${ef}`};}
+        case 'dust':{const n=v<10?'insignificante':(v<50?'calima leve':(v<150?'calima moderada':'calima intensa'));
+          const ef = v>=50?' El polvo en suspensión rebaja contraste y puede dar un cielo lechoso.':'';
+          return {t:`Polvo ${Math.round(v)}`, m:`${Math.round(v)} µg/m³ (${n}).${ef}`};}
+        case 'score':{const n=v>=35?'buena':(v>=20?'aceptable':(v>0?'pobre':'nula: Sol tras relieve'));
+          const ef = v<=0?' El relieve tapa el Sol en este instante.':(v<20?' Combinación desfavorable de nubes, aerosoles o Sol muy bajo.':'');
+          return {t:`Score ${v}/100`, m:`${v}/100 (${n}).${ef}`};}
+        case 'elev':{const n=v<0?'bajo el horizonte':(v<4?'muy bajo, difícil':(v<15?'bajo':'alto'));
+          const ef = v<4&&v>=0?' Tan bajo que cualquier obstáculo o bruma en el horizonte lo tapa.':'';
+          return {t:`Elevación ${v.toFixed(1)}°`, m:`${v.toFixed(1)}° sobre el horizonte (${n}).${ef}`};}
+        case 'az':{const dir=v<45?'N':(v<135?'E':(v<225?'S':(v<315?'O':'N'))); return {t:`Azimut ${v.toFixed(1)}°`, m:`Rumbo ${v.toFixed(1)}°, hacia el ${dir}. Es la dirección del horizonte donde estará el Sol.`};}
       }
       return {t:'', m:''};
     };
